@@ -1,8 +1,14 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import {
+  integer,
+  boolean as pgBoolean,
+  pgTable,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar({ length: 255 }).notNull(),
   age: integer().notNull(),
-  email: varchar({ length: 255 }).notNull().unique(),
+  rollnumber: varchar({ length: 255 }).unique(),
+  status: pgBoolean().notNull().default(true), // true for present, false for absent
 });

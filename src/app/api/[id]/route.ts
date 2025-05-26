@@ -5,6 +5,13 @@ import { usersTable } from "@/db/schema";
 import { db } from "@/index";
 import { eq } from "drizzle-orm";
 
+type User = {
+  name: string;
+  age: number;
+  rollnumber: string;
+  status: boolean;
+};
+
 // PUT /api/[id]
 export async function PUT(req: Request) {
   const url = new URL(req.url);
@@ -14,13 +21,33 @@ export async function PUT(req: Request) {
       status: 400,
     });
 
-  const { name, age, email } = await req.json();
+  // Accept all possible fields for update (including status)
+  const { name, age, rollnumber, status } = await req.json();
+
+  // Only update fields that are provided
+  const updateData: Partial<User> = {};
+  if (name !== undefined) updateData.name = name;
+  if (age !== undefined) updateData.age = age;
+  if (rollnumber !== undefined) updateData.rollnumber = rollnumber;
+  if (status !== undefined) updateData.status = status;
+
+  if (Object.keys(updateData).length === 0) {
+    return new Response(JSON.stringify({ error: "No data to update" }), {
+      status: 400,
+    });
+  }
 
   const updated = await db
     .update(usersTable)
-    .set({ name, age, email })
+    .set(updateData)
     .where(eq(usersTable.id, id))
     .returning();
+
+  if (updated.length === 0) {
+    return new Response(JSON.stringify({ error: "User not found" }), {
+      status: 404,
+    });
+  }
 
   return Response.json(updated[0]);
 }

@@ -1,149 +1,31 @@
 "use client";
-import { FormEvent, useEffect, useState } from "react";
-import { FaTrash } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
-type User = {
-  id: number;
-  name: string;
-  age: number;
-  email: string;
-};
+export default function WelcomePage() {
+  const router = useRouter();
 
-export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Form state
-  const [name, setName] = useState("");
-  const [age, setAge] = useState("");
-  const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    async function fetchUsers() {
-      const res = await fetch("/api");
-      const data = await res.json();
-      setUsers(data);
-      setLoading(false);
-    }
-
-    fetchUsers();
-  }, []);
-
-  // Handle form submit
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    await fetch("/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        age: Number(age),
-        email,
-      }),
-    });
-    setName("");
-    setAge("");
-    setEmail("");
-    setSubmitting(false);
-
-    // Refresh user list
-    setLoading(true);
-    const res = await fetch("/api");
-    const data = await res.json();
-    setUsers(data);
-    setLoading(false);
+  const handleEnter = () => {
+    router.push("/dashboard");
   };
 
-  if (loading) return <p>Loading...</p>;
-
   return (
-    <div className="p-4 max-w-xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Users</h1>
-        <a href="/optimistic" className="text-blue-600 hover:underline">
-          Go to optimistic
-        </a>
-      </div>
-      <form
-        onSubmit={handleSubmit}
-        className="mb-6 bg-white p-4 rounded shadow flex flex-col gap-3"
-      >
-        <input
-          className="border rounded px-3 py-2"
-          placeholder="Name"
-          value={name}
-          required
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="border rounded px-3 py-2"
-          placeholder="Age"
-          type="number"
-          value={age}
-          required
-          onChange={(e) => setAge(e.target.value)}
-        />
-        <input
-          className="border rounded px-3 py-2"
-          placeholder="Email"
-          type="email"
-          value={email}
-          required
-          onChange={(e) => setEmail(e.target.value)}
-        />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300 px-2">
+      <div className="bg-white rounded-xl shadow-lg p-6 sm:p-10 flex flex-col items-center w-full max-w-xs sm:max-w-md">
+        <h1 className="text-3xl font-bold mb-4 text-blue-700 text-center">
+          Welcome to Aether Web
+        </h1>
+        <p className="text-gray-700 mb-8 text-center">
+          Manage your classes, students, and attendance with ease.
+          <br />
+          Click below to enter your dashboard.
+        </p>
         <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          disabled={submitting}
+          onClick={handleEnter}
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition w-full"
         >
-          {submitting ? "Sending..." : "Send"}
+          Enter Dashboard
         </button>
-      </form>
-      <ul className="space-y-2">
-        {users.map((user) => (
-          <li
-            key={user.id}
-            className="border p-3 rounded shadow-sm hover:shadow-md transition bg-white flex items-center justify-between"
-          >
-            <div>
-              <p>
-                <strong>Name:</strong> {user.name}
-              </p>
-              <p>
-                <strong>Age:</strong> {user.age}
-              </p>
-              <p>
-                <strong>Email:</strong> {user.email}
-              </p>
-            </div>
-            <button
-              className="ml-4 text-red-600 hover:text-red-800"
-              title="Delete"
-              onClick={async () => {
-                try {
-                  const res = await fetch(`/api/${user.id}`, {
-                    method: "DELETE",
-                  });
-                  if (!res.ok) throw new Error("Delete failed");
-
-                  setLoading(true);
-                  const refreshed = await fetch("/api");
-                  const data = await refreshed.json();
-                  setUsers(data);
-                  setLoading(false);
-                } catch (err) {
-                  console.error(err);
-                  alert("Failed to delete user.");
-                }
-              }}
-            >
-              <FaTrash className="h-4 w-4" />
-            </button>
-          </li>
-        ))}
-      </ul>
+      </div>
     </div>
   );
 }

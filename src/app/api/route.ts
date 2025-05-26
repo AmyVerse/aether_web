@@ -5,15 +5,18 @@ import { usersTable } from "@/db/schema";
 import { db } from "@/index"; // Drizzle client
 
 export async function GET() {
-  const users = await db.select().from(usersTable);
+  const users = await db
+    .select()
+    .from(usersTable)
+    .orderBy(usersTable.rollnumber);
   return Response.json(users);
 }
 
 export async function POST(request: Request) {
-  const { name, age, email } = await request.json();
+  const { name, age, rollnumber, status } = await request.json();
   const inserted = await db
     .insert(usersTable)
-    .values({ name, age, email })
+    .values({ name, age, rollnumber, status })
     .returning();
   return Response.json(inserted[0], { status: 201 });
 }
