@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 import { usersTable } from "@/db/schema";
 import { db } from "@/index"; // Drizzle client
 
+
+
 export async function GET() {
   const users = await db
     .select()
@@ -11,6 +13,10 @@ export async function GET() {
     .orderBy(usersTable.rollnumber);
   return Response.json(users);
 }
+
+
+
+
 
 export async function POST(request: Request) {
   const { name, age, rollnumber, status } = await request.json();

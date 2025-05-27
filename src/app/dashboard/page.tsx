@@ -1,6 +1,8 @@
 "use client";
 
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const teacherName = "Dr. Snehal";
 
@@ -31,13 +33,34 @@ function slugify(str: string) {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { status } = useSession();
 
   const handleLectureClick = (subject: string) => {
     router.push(`/optimistic/${slugify(subject)}`);
   };
 
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/signin");
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "unauthenticated") {
+    return null; // block rendering while session is loading or about to redirect
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
+      {/* Top Bar with Logout */}
+      <div className="max-w-5xl mx-auto flex justify-end mb-4">
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="bg-gray-800 text-white px-4 py-2 rounded"
+        >
+          Sign Out
+        </button>
+      </div>
+
       {/* Greeting */}
       <section className="max-w-5xl mx-auto mb-8">
         <h1 className="text-3xl font-semibold text-gray-900 mb-1">

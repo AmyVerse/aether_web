@@ -1,7 +1,6 @@
 "use client";
 import { useParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { FaTrash } from "react-icons/fa";
 
 // Utility to convert slug back to readable subject
 function unslugify(slug: string) {
@@ -88,19 +87,19 @@ export default function UsersPage() {
     setSubmitting(false);
   };
 
-  // Optimistic Delete
-  const handleDelete = async (id: number) => {
-    // Remove from UI instantly
-    const prevUsers = users;
-    setUsers(users.filter((u) => u.id !== id));
-    try {
-      await fetch(`/api/${id}`, { method: "DELETE" });
-    } catch {
-      // On error, restore previous users
-      setUsers(prevUsers);
-      alert("Failed to delete user.");
-    }
-  };
+  // // Optimistic Delete
+  // const handleDelete = async (id: number) => {
+  //   // Remove from UI instantly
+  //   const prevUsers = users;
+  //   setUsers(users.filter((u) => u.id !== id));
+  //   try {
+  //     await fetch(`/api/${id}`, { method: "DELETE" });
+  //   } catch {
+  //     // On error, restore previous users
+  //     setUsers(prevUsers);
+  //     alert("Failed to delete user.");
+  //   }
+  // };
 
   // Toggle present/absent status optimistically and track changes
   const handleToggleStatus = (id: number) => {
