@@ -35,7 +35,7 @@ export default function UsersPage() {
   // Fetch users from API
   useEffect(() => {
     async function fetchUsers() {
-      const res = await fetch("/api");
+      const res = await fetch("/api/test");
       const data = await res.json();
       setUsers(data);
     }
@@ -63,7 +63,7 @@ export default function UsersPage() {
 
     // Actually send to API
     try {
-      const res = await fetch("/api", {
+      const res = await fetch("/api/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -127,7 +127,7 @@ export default function UsersPage() {
       );
       await Promise.all(
         changedUsers.map((user) =>
-          fetch(`/api/${user.id}`, {
+          fetch(`/api/test/${user.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aether Web
 
-## Getting Started
+Aether Web is a modern attendance and class management system built with [Next.js](https://nextjs.org), Drizzle ORM, and NextAuth.js.
 
-First, run the development server:
+## 🚀 Getting Started
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. **Install dependencies:**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. **Set up your environment variables:**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   - Copy `.env.example` to `.env.local` and fill in your database and authentication secrets.
 
-## Learn More
+3. **Run the development server:**
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Open your browser:**
+   - Visit [http://localhost:3000](http://localhost:3000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📝 Features
 
-## Deploy on Vercel
+- User authentication (Google & Credentials)
+- Responsive dashboard for teachers
+- Attendance marking with optimistic UI
+- Export attendance as CSV
+- Modern UI with Tailwind CSS
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🛠️ Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js (App Router)
+- Drizzle ORM (PostgreSQL)
+- NextAuth.js
+- Tailwind CSS
+- React Icons
+
+## 📦 Deployment
+
+Deploy easily on [Vercel](https://vercel.com/) or your favorite platform.
+
+## 📚 Learn More
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Drizzle ORM](https://orm.drizzle.team/)
+- [NextAuth.js](https://next-auth.js.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+
+---
+
+© 2025. Aether Web. All rights reserved.

@@ -1,29 +1,29 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { FaEnvelope, FaLock } from "react-icons/fa";
-import Link from "next/link";
 
 export default function SignInClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
-  const [loading, setLoading] = useState(false); // <-- Add loading state
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false); // <-- Google loading state
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); // <-- Start loading
+    setLoading(true);
 
     const res = await signIn("credentials", {
       redirect: false,
       email,
       password,
     });
-    setLoading(false); // <-- Stop loading after response
+    setLoading(false);
     if (res?.ok) {
       router.push("/dashboard");
     } else {
@@ -31,14 +31,16 @@ export default function SignInClient() {
     }
   };
 
-  return (
-    <div className="min-h-screen font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
-      <div className="flex flex-col items-center w-full max-w-md sm:max-w-md md:max-w-lg">
-        <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.svg" alt="Logo" width={40} height={40} />
-        </div>
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    await signIn("google", { callbackUrl: "/dashboard" });
+    // No need to setGoogleLoading(false) because redirect will happen
+  };
 
-        <div className="bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-md w-full text-center">
+  return (
+    <div className="font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
+      <div className="flex flex-col items-center w-full max-w-md sm:max-w-md md:max-w-lg">
+        <div className="bg-transparent p-6 sm:p-8 md:p-10 rounded-xl outline-gray-300 outline-dotted w-full text-center">
           <h2 className="text-2xl font-bold mb-3">Welcome Back</h2>
           <p className="text-gray-400 mb-10 font-light font-[inter] leading-relaxed">
             Enter your credentials to access your account.
@@ -77,10 +79,9 @@ export default function SignInClient() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full leading-tight bg-gray-800 font-[poppins] text-white py-3 mb-4 rounded-lg hover:bg-gray-900 transition"
             >
-              {" "}
               {loading ? (
                 <span>
                   <svg
@@ -111,23 +112,38 @@ export default function SignInClient() {
           </form>
           <button
             type="button"
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="w-full flex items-center leading-tight justify-center gap-2 bg-white border border-gray-300 text-gray-700 font-[poppins] py-3 rounded-lg hover:bg-gray-100 transition shadow mb-8"
+            onClick={handleGoogleSignIn}
+            disabled={loading || googleLoading}
+            className="w-full flex items-center leading-tight justify-center gap-2 bg-white border border-gray-300 text-gray-700 font-[poppins] py-3 rounded-lg hover:bg-gray-100 transition shadow"
           >
-            <Image src="/google.webp" alt="Google" width={25} height={20} />
-            Sign in with Google
+            {googleLoading ? (
+              <svg
+                className="animate-spin h-5 w-5 mr-2 inline-block"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            ) : (
+              <Image src="/google.webp" alt="Google" width={18} height={18} />
+            )}
+            {googleLoading
+              ? "Signing in with Google..."
+              : "Sign in with Google"}
           </button>
         </div>
-
-        <p className="text-gray-500 text-sm mt-6">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="text-gray-800 font-medium hover:underline"
-          >
-            Sign Up
-          </Link>
-        </p>
       </div>
     </div>
   );

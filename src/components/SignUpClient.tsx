@@ -1,12 +1,14 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FaEnvelope, FaLock, FaUser } from "react-icons/fa";
 
-export default function SignupClient() {
+export default function SignupClient({
+  setIsSigninPageAction,
+}: {
+  setIsSigninPageAction: (v: boolean) => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -21,7 +23,7 @@ export default function SignupClient() {
     setError("");
     setSuccessMsg("");
     setCountdown(3);
-    setLoading(true); // <-- Start loading
+    setLoading(true);
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
@@ -29,18 +31,18 @@ export default function SignupClient() {
       body: JSON.stringify({ name, email, password }),
     });
 
-    setLoading(false); // <-- Stop loading after response
+    setLoading(false);
 
     if (res.ok) {
       setSuccessMsg("User created!");
-      let count = 5;
+      let count = 3;
       setCountdown(count);
       const interval = setInterval(() => {
         count -= 1;
         setCountdown(count);
         if (count === 0) {
           clearInterval(interval);
-          router.push("/signin");
+          setIsSigninPageAction(true); // <-- Just flip to sign in page
         }
       }, 1000);
     } else {
@@ -50,15 +52,10 @@ export default function SignupClient() {
   };
 
   return (
-    <div className="min-h-screen font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
+    <div className="font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
       <div className="flex flex-col items-center w-full max-w-md sm:max-w-md md:max-w-lg">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.svg" alt="Logo" width={40} height={40} />
-        </div>
-
         {/* Card */}
-        <div className="bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-md w-full text-center">
+        <div className="bg-transparent p-6 sm:p-8 md:p-10 rounded-xl outline-gray-300 outline-dotted w-full text-center">
           <h2 className="text-2xl font-bold mb-3">Create Account</h2>
           <p className="text-gray-400 mb-10 font-light font-[inter] leading-relaxed">
             Sign up to get started.
@@ -154,15 +151,6 @@ export default function SignupClient() {
             </form>
           )}
         </div>
-        <p className="text-gray-500 text-sm mt-6">
-          Already have an account?{" "}
-          <Link
-            href="/signin"
-            className="text-gray-800 font-medium hover:underline"
-          >
-            Sign In
-          </Link>
-        </p>
       </div>
     </div>
   );

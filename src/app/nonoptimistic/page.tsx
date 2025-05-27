@@ -22,7 +22,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     async function fetchUsers() {
-      const res = await fetch("/api");
+      const res = await fetch("/api/test");
       const data = await res.json();
       setUsers(data);
       setLoading(false);
@@ -35,7 +35,7 @@ export default function UsersPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    await fetch("/api", {
+    await fetch("/api/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -51,7 +51,7 @@ export default function UsersPage() {
 
     // Refresh user list
     setLoading(true);
-    const res = await fetch("/api");
+    const res = await fetch("/api/test");
     const data = await res.json();
     setUsers(data);
     setLoading(false);
@@ -123,7 +123,7 @@ export default function UsersPage() {
               title="Delete"
               onClick={async () => {
                 try {
-                  const res = await fetch(`/api/${user.id}`, {
+                  const res = await fetch(`/api/test/${user.id}`, {
                     method: "DELETE",
                   });
                   if (!res.ok) throw new Error("Delete failed");

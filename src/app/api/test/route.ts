@@ -14,10 +14,6 @@ export async function GET() {
   return Response.json(users);
 }
 
-
-
-
-
 export async function POST(request: Request) {
   const { name, age, rollnumber, status } = await request.json();
   const inserted = await db
