@@ -39,10 +39,10 @@ export default function SignInClient() {
 
   return (
     <div className="font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
-      <div className="flex flex-col items-center w-full max-w-md sm:max-w-md md:max-w-lg">
+      <div className="flex flex-col items-center max-w-full sm:max-w-md md:max-w-lg">
         <div className="bg-transparent p-6 sm:p-8 md:p-10 rounded-xl outline-gray-300 outline-dotted w-full text-center">
-          <h2 className="text-2xl font-bold mb-3">Welcome Back</h2>
-          <p className="text-gray-400 mb-10 font-light font-[inter] leading-relaxed">
+          <h2 className="text-2xl font-bold mb-1 sm:mb-3">Welcome Back</h2>
+          <p className="text-gray-400 mb-10 font-light font-[inter] leading-relaxed text-2">
             Enter your credentials to access your account.
           </p>
 

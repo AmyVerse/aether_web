@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FaEnvelope, FaLock, FaUser } from "react-icons/fa";
 
@@ -9,7 +8,6 @@ export default function SignupClient({
 }: {
   setIsSigninPageAction: (v: boolean) => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,7 +54,7 @@ export default function SignupClient({
       <div className="flex flex-col items-center w-full max-w-md sm:max-w-md md:max-w-lg">
         {/* Card */}
         <div className="bg-transparent p-6 sm:p-8 md:p-10 rounded-xl outline-gray-300 outline-dotted w-full text-center">
-          <h2 className="text-2xl font-bold mb-3">Create Account</h2>
+          <h2 className="text-2xl font-bold mb-1 sm:mb-3">Create Account</h2>
           <p className="text-gray-400 mb-10 font-light font-[inter] leading-relaxed">
             Sign up to get started.
           </p>

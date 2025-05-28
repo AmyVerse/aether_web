@@ -1,8 +1,7 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const teacherName = "Dr. Snehal";
 
@@ -33,21 +32,10 @@ function slugify(str: string) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { status } = useSession();
 
   const handleLectureClick = (subject: string) => {
     router.push(`/optimistic/${slugify(subject)}`);
   };
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/");
-    }
-  }, [status, router]);
-
-  if (status === "loading" || status === "unauthenticated") {
-    return null; // block rendering while session is loading or about to redirect
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
