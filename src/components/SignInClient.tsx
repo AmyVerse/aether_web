@@ -80,7 +80,7 @@ export default function SignInClient() {
             <button
               type="submit"
               disabled={loading || googleLoading}
-              className="w-full leading-tight bg-gray-800 font-[poppins] text-white py-3 mb-4 rounded-lg hover:bg-gray-900 transition"
+              className="w-full leading-tight bg-gray-800 font-[poppins] text-white py-3 mb-3 rounded-lg hover:bg-gray-900 transition"
             >
               {loading ? (
                 <span>

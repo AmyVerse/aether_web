@@ -3,11 +3,11 @@ import { db } from "@/index"; // your Drizzle client
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
+import type { Account, Profile, User } from "next-auth";
+import { Session } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { JWT } from "next-auth/jwt";
-import { Session } from "next-auth";
-import { User } from "next-auth";
 
 import type { SessionStrategy } from "next-auth";
 
@@ -40,7 +40,13 @@ export const authOptions = {
         );
         if (!isValid) return null;
 
-        return { id: user.id, name: user.name, email: user.email };
+        // Return userid along with other fields
+        return {
+          id: user.id,
+          userid: user.userid ?? "",
+          name: user.name,
+          email: user.email,
+        };
       },
     }),
   ],
@@ -51,15 +57,33 @@ export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user?: User }) {
+    async jwt({
+      token,
+      user,
+    }: {
+      token: JWT;
+      user?: User;
+      account?: Account | null;
+      profile?: Profile;
+      isNewUser?: boolean;
+    }) {
       if (user) {
+        token.userid = user.userid ?? user.id ?? "";
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.image = user.image;
       }
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
-      if (token.id) {
+      // Add all fields from token to session.user
+      if (session.user) {
         (session.user as { id?: string }).id = token.id as string;
+        (session.user as { userid?: string }).userid = token.userid as string; // <-- Add this line
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        if (token.image) session.user.image = token.image as string;
       }
       return session;
     },

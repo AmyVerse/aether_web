@@ -24,7 +24,11 @@ export default function LandingPage() {
     }
   }, [status, router]);
 
-  if (showRedirecting || status === "loading") {
+  if (status === "loading") {
+    return null; // Avoid flashing
+  }
+
+  if (showRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center font-[manrope] bg-gray-100">
         <div className="text-center">
@@ -94,7 +98,7 @@ export default function LandingPage() {
           )}
         </div>
 
-        <p className="text-sm text-gray-500 mt-6 text-center md:text-left">
+        <p className="text-base text-gray-500 mt-6 text-center md:text-left">
           {isSigninPage ? (
             <>
               Don&apos;t have an account?{" "}
@@ -118,6 +122,15 @@ export default function LandingPage() {
               </button>
             </>
           )}
+        </p>
+        <p className="text-sm text-gray-500 mt-2 text-center md:text-left">
+          Need Help?{" "}
+            <a
+            href="mailto:amulyayadav665@gmail.com"
+            className="text-gray-800 font-medium hover:underline"
+            >
+            Contact Us
+            </a>
         </p>
       </div>
 

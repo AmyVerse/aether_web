@@ -1,15 +1,16 @@
 import {
   boolean,
+  date,
   integer,
   boolean as pgBoolean,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
-  timestamp,
-  uuid,
-  date,
   time,
-  pgEnum,
+  timestamp,
+  unique,
+  uuid,
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -60,6 +61,13 @@ export const holidayTypeEnum = pgEnum("holiday_type_enum", [
   "Custom",
 ]);
 
+// Enum for Attendance Status
+export const attendanceStatusEnum = pgEnum("attendance_status_enum", [
+  "Present",
+  "Absent",
+  "Leave",
+]);
+
 //trial
 export const usersTable = pgTable("users", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -78,6 +86,7 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   password: text("password"), // only used for credentials login
+  userid: uuid("userid"), // Unique identifier for the user
 });
 
 export const accounts = pgTable(
@@ -175,7 +184,7 @@ export const students = pgTable("students", {
 
 // Class Sessions Table
 export const classSessions = pgTable("class_sessions", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: varchar("id", { length: 9 }).primaryKey(),
   subject_id: uuid("subject_id")
     .notNull()
     .references(() => subjects.id, {
@@ -199,24 +208,24 @@ export const classSessions = pgTable("class_sessions", {
   reason: text("reason"), // For cancellation or rescheduling
 });
 
-// Attendance Record Table
-export const attendanceRecords = pgTable("attendance_record", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  student_id: uuid("student_id")
-    .notNull()
-    .references(() => students.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-  session_id: uuid("session_id")
-    .notNull()
-    .references(() => classSessions.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-  attendance_status: text("attendance_status").notNull(), // Consider an enum: ['present', 'absent', 'late']
-  recorded_at: timestamp("recorded_at").defaultNow(),
-});
+// Attendance Records Table
+export const attendanceRecords = pgTable(
+  "attendance_record",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    student_id: uuid("student_id"), // Nullable, no FK constraint here
+    session_id: varchar("session_id", { length: 9 }), // Nullable, to store nanoid(9), no FK constraint here
+    attendance_status: attendanceStatusEnum("attendance_status")
+      .notNull()
+      .default("Present"), // e.g., 'present', 'absent', 'late'
+    recorded_at: timestamp("recorded_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => {
+    return {
+      uniqueRecord: unique().on(table.session_id, table.student_id),
+    };
+  }
+);
 
 // Holiday Table
 export const holidays = pgTable("holiday", {
@@ -224,4 +233,26 @@ export const holidays = pgTable("holiday", {
   date: date("date").notNull(),
   description: text("description"),
   type: holidayTypeEnum("type").notNull(),
+});
+
+export const recurringClassSetups = pgTable("recurring_class_setups", {
+  id: uuid("id").defaultRandom().primaryKey(), // Use defaultRandom for UUID primary key
+  teacher_id: uuid("teacher_id")
+    .notNull()
+    .references(() => teachers.id),
+  subject_id: uuid("subject_id")
+    .notNull()
+    .references(() => subjects.id),
+  group_id: uuid("group_id")
+    .notNull()
+    .references(() => groups.id),
+  // days_of_week: 0=Sunday, 1=Monday, ..., 6=Saturday (aligns with JavaScript's getDay())
+  days_of_week: integer("days_of_week").array().notNull(), // e.g., [1, 3, 5] for Mon, Wed, Fri
+  start_time: time("start_time").notNull(), // e.g., '10:00:00'
+  end_time: time("end_time"), // e.g., '11:00:00'
+  session_type: classSessionTypeEnum("type"), // From your existing enum
+  semester_start_date: date("semester_start_date").notNull(),
+  semester_end_date: date("semester_end_date").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  // You might add an 'is_active' boolean or similar if setups can be disabled/archived
 });
