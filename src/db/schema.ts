@@ -9,7 +9,6 @@ import {
   text,
   time,
   timestamp,
-  unique,
   uuid,
   varchar,
   type AnyPgColumn,
@@ -209,23 +208,15 @@ export const classSessions = pgTable("class_sessions", {
 });
 
 // Attendance Records Table
-export const attendanceRecords = pgTable(
-  "attendance_record",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    student_id: uuid("student_id"), // Nullable, no FK constraint here
-    session_id: varchar("session_id", { length: 9 }), // Nullable, to store nanoid(9), no FK constraint here
-    attendance_status: attendanceStatusEnum("attendance_status")
-      .notNull()
-      .default("Present"), // e.g., 'present', 'absent', 'late'
-    recorded_at: timestamp("recorded_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => {
-    return {
-      uniqueRecord: unique().on(table.session_id, table.student_id),
-    };
-  }
-);
+export const attendanceRecords = pgTable("attendance_record", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  student_id: uuid("student_id").unique(),
+  session_id: varchar("session_id", { length: 9 }).unique(),
+  attendance_status: attendanceStatusEnum("attendance_status")
+    .notNull()
+    .default("Present"),
+  recorded_at: timestamp("recorded_at", { withTimezone: true }).defaultNow(),
+});
 
 // Holiday Table
 export const holidays = pgTable("holiday", {

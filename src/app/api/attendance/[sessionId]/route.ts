@@ -5,10 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const sessionId = params.sessionId;
+    const sessionId = (await params).sessionId;
 
     // 1. Find session → group_id
     const [session] = await db
@@ -48,7 +48,7 @@ export async function GET(
 
     const response = studentsInGroup.map((student) => ({
       ...student,
-      attendance_status: recordMap.get(student.student_id) || "Not Marked",
+      attendance_status: recordMap.get(student.student_id) || "Present",
     }));
 
     return NextResponse.json({ students: response });
@@ -60,10 +60,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
     const { students } = await req.json();
 
     if (!Array.isArray(students)) {
@@ -73,32 +73,42 @@ export async function POST(
       );
     }
 
+    // Filter valid statuses
+    const validStudents = students.filter(({ attendance_status }) =>
+      ["Present", "Absent"].includes(attendance_status)
+    );
+
     // Prepare values for bulk upsert
-    const values = students
-      .filter(({ attendance_status }) =>
-        ["Present", "Absent"].includes(attendance_status)
-      )
-      .map(({ student_id, attendance_status }) => ({
-        session_id: sessionId,
-        student_id,
-        attendance_status,
-        recorded_at: new Date(),
-      }));
+    const values = validStudents.map(({ student_id, attendance_status }) => ({
+      session_id: sessionId,
+      student_id,
+      attendance_status,
+      recorded_at: new Date(),
+    }));
 
-    // Bulk upsert using ON CONFLICT (Postgres only)
-    await db
-      .insert(attendanceRecords)
-      .values(values)
-      .onConflictDoUpdate({
-        target: [attendanceRecords.session_id, attendanceRecords.student_id],
-        set: {
-          attendance_status: attendanceRecords.attendance_status,
-          recorded_at: attendanceRecords.recorded_at,
-        },
-      });
+    if (validStudents.length > 0) {
+      const valuesString = validStudents
+        .map(
+          (s) =>
+            `('${sessionId}', '${s.student_id}', '${
+              s.attendance_status
+            }', '${new Date().toISOString()}')`
+        )
+        .join(",");
 
-    return NextResponse.json({ success: true });
-  } catch {
+      await db.execute(`
+        INSERT INTO attendance_record (session_id, student_id, attendance_status, recorded_at)
+        VALUES ${valuesString}
+        ON CONFLICT (session_id, student_id)
+        DO UPDATE SET
+          attendance_status = EXCLUDED.attendance_status,
+          recorded_at = EXCLUDED.recorded_at
+      `);
+    }
+
+    return NextResponse.json({ success: true, upserted: values.length });
+  } catch (err) {
+    console.error("Attendance upsert error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
