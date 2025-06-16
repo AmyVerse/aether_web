@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Manrope, Poppins } from "next/font/google";
 import localFont from "next/font/local";
-import { AuthProvider } from "@/components/session-provider";
 import "./globals.css";
 
 const funnel = localFont({
@@ -44,7 +43,7 @@ export default function RootLayout({
       <body
         className={`${funnel.variable} ${poppins.variable} ${inter.variable} ${manrope.variable} antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        {children}
       </body>
     </html>
   );

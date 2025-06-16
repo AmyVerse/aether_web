@@ -1,6 +1,5 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,29 +11,31 @@ export default function SignInClient() {
   const [error, setError] = useState("");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false); // <-- Google loading state
+  const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Dummy login handler for UI testing (no next-auth)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
-    setLoading(false);
-    if (res?.ok) {
-      router.push("/dashboard");
-    } else {
-      setError("Invalid email or password");
-    }
+    // Simulate login delay
+    setTimeout(() => {
+      setLoading(false);
+      if (email && password) {
+        router.push("/dashboard");
+      } else {
+        setError("Invalid email or password");
+      }
+    }, 1200);
   };
 
+  // Dummy Google sign in for UI testing
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
-    // No need to setGoogleLoading(false) because redirect will happen
+    setTimeout(() => {
+      setGoogleLoading(false);
+      router.push("/dashboard");
+    }, 1200);
   };
 
   return (
@@ -141,7 +142,7 @@ export default function SignInClient() {
             )}
             {googleLoading
               ? "Signing in with Google..."
-              : "Sign in with Google"}
+              : "Continue with Google"}
           </button>
         </div>
       </div>

@@ -8,7 +8,7 @@ export default function RedirectingPage() {
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    let count = 4;
+    let count = 3;
     setCountdown(count);
     const interval = setInterval(() => {
       count -= 1;

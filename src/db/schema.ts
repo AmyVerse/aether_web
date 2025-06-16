@@ -2,7 +2,6 @@ import {
   boolean,
   date,
   integer,
-  boolean as pgBoolean,
   pgEnum,
   pgTable,
   primaryKey,
@@ -29,6 +28,13 @@ export const classSessionTypeEnum = pgEnum("class_session_type_enum", [
   "Lab",
   "Tutorial",
   "Extras",
+]);
+
+export const userRoleEnum = pgEnum("user_role_enum", [
+  "student",
+  "teacher",
+  "editor",
+  "admin",
 ]);
 
 // Enum for Class Session Statuses
@@ -67,63 +73,48 @@ export const attendanceStatusEnum = pgEnum("attendance_status_enum", [
   "Leave",
 ]);
 
-//trial
-export const usersTable = pgTable("users", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  name: varchar("name", { length: 255 }).notNull(),
-  age: integer("age").notNull(),
-  rollnumber: varchar("rollnumber", { length: 255 }).unique(),
-  status: pgBoolean("status").notNull().default(true),
-});
+// --- Auth Schema ---
 
-// --- NextAuth Schema ---
-
-export const users = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name"),
+export const users = pgTable("users", {
+  id: text("id").primaryKey(), // Auth.js internal ID
   email: text("email").notNull().unique(),
-  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  name: text("name").default("User"),
   image: text("image"),
   password: text("password"), // only used for credentials login
-  userid: uuid("userid"), // Unique identifier for the user
+  role: text("role").default("student"), // 'student' | 'teacher' | 'admin'
+  roleId: text("role_id").notNull(), // your student/teacher ID
+});
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: text("user_id").notNull(),
+  expires: timestamp("expires", { withTimezone: true }).notNull(),
 });
 
 export const accounts = pgTable(
-  "account",
+  "accounts",
   {
-    userId: text("userId").notNull(),
-    type: text("type").$type<"oauth" | "credentials">().notNull(),
+    userId: text("user_id").notNull(),
     provider: text("provider").notNull(),
-    providerAccountId: text("providerAccountId").notNull(),
-    refresh_token: text("refresh_token"),
+    providerAccountId: text("provider_account_id").notNull(),
+    type: text("type").notNull(), // 'oauth'
     access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
+    expires_at: timestamp("expires_at", { withTimezone: true }),
     id_token: text("id_token"),
-    session_state: text("session_state"),
+    scope: text("scope"),
+    token_type: text("token_type"),
   },
-  (acc) => ({
-    pk: primaryKey({ columns: [acc.provider, acc.providerAccountId] }),
-  })
+  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
 );
 
-export const sessions = pgTable("session", {
-  sessionToken: text("sessionToken").primaryKey(),
-  userId: text("userId").notNull(),
-  expires: timestamp("expires", { mode: "date" }).notNull(),
-});
-
 export const verificationTokens = pgTable(
-  "verification_token",
+  "verification_tokens",
   {
     identifier: text("identifier").notNull(),
     token: text("token").notNull(),
-    expires: timestamp("expires", { mode: "date" }).notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
   },
-  (vt) => ({
-    pk: primaryKey({ columns: [vt.identifier, vt.token] }),
-  })
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
 
 // --- ERP Schema ---
@@ -168,11 +159,9 @@ export const teachers = pgTable("teachers", {
 // Students Table
 export const students = pgTable("students", {
   id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
   roll_number: varchar("roll_number", { length: 10 }).notNull().unique(),
   name: text("name").notNull(),
-  group_id: uuid("group_id")
-    .notNull()
-    .references(() => groups.id, { onDelete: "restrict", onUpdate: "cascade" }),
   batch_year: integer("batch_year").notNull(),
   is_active: boolean("is_active").notNull().default(true),
   join_date: date("join_date")

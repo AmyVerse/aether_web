@@ -1,45 +1,12 @@
 "use client";
 
 import SignInClient from "@/components/SignInClient";
-import SignUpClient from "@/components/SignUpClient";
-import { useSession } from "next-auth/react";
+import SignUpClient from "@/components/SignUpC";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function LandingPage() {
-  const router = useRouter();
-  const { status } = useSession();
   const [isSigninPage, setIsSigninPage] = useState(true);
-  const [showRedirecting, setShowRedirecting] = useState(false);
-
-  // Avoid flashing by returning null on loading
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      setShowRedirecting(true);
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1500); // for user perception
-    }
-  }, [status, router]);
-
-  if (status === "loading") {
-    return null; // Avoid flashing
-  }
-
-  if (showRedirecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-[manrope] bg-gray-100">
-        <div className="text-center">
-          <p className="text-gray-700 text-xl font-medium mb-2">
-            Welcome back!
-          </p>
-          <p className="text-lg text-gray-500">Redirecting to Dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen font-[manrope] flex flex-col md:flex-row">
@@ -125,12 +92,12 @@ export default function LandingPage() {
         </p>
         <p className="text-sm text-gray-500 mt-2 text-center md:text-left">
           Need Help?{" "}
-            <a
+          <a
             href="mailto:amulyayadav665@gmail.com"
             className="text-gray-800 font-medium hover:underline"
-            >
+          >
             Contact Us
-            </a>
+          </a>
         </p>
       </div>
 
