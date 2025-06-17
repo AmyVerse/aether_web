@@ -22,7 +22,7 @@ export default function AttendancePage() {
 
   // Track locally changed statuses for submit
   const [, setChangedStatus] = useState<Record<string, "Present" | "Absent">>(
-    {}
+    {},
   );
 
   const fetchAttendance = async () => {
@@ -45,7 +45,7 @@ export default function AttendancePage() {
           data.students.map((s: StudentAttendance) => ({
             ...s,
             attendance_status: s.attendance_status || "Present", // i like this one
-          }))
+          })),
         );
       }
     } catch {
@@ -70,8 +70,8 @@ export default function AttendancePage() {
               attendance_status:
                 s.attendance_status === "Present" ? "Absent" : "Present",
             }
-          : s
-      )
+          : s,
+      ),
     );
     setChangedStatus((prev) => ({
       ...prev,
@@ -108,10 +108,10 @@ export default function AttendancePage() {
   // Dashboard stats
   const total = students.length;
   const present = students.filter(
-    (u) => u.attendance_status === "Present"
+    (u) => u.attendance_status === "Present",
   ).length;
   const absent = students.filter(
-    (u) => u.attendance_status === "Absent"
+    (u) => u.attendance_status === "Absent",
   ).length;
 
   return (

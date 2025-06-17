@@ -12,7 +12,7 @@ export async function sendOtp(email: string) {
     httpOnly: true,
     maxAge: 300,
     path: "/",
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "lax",
   });
 
@@ -95,5 +95,5 @@ export async function sendOtp(email: string) {
     html,
   });
 
-  return { otp, data };
+  return { data };
 }

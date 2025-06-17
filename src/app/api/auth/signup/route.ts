@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       .where(eq(teachers.email, email))
       .limit(1);
 
-    let roleId: string;
+    let roleId: string | null = null; // Default roleId
     let role: string = "student"; // Default role
     let name: string = "User"; // Default name
 
@@ -32,17 +32,11 @@ export async function POST(req: Request) {
       roleId = teacher[0].id;
       role = "teacher";
       name = teacher[0].name || "User";
-    } else {
-      // If not found in either, you must still provide a roleId (notNull)
-      roleId = crypto.randomUUID();
-      // name remains "User"
-      // role remains "student"
     }
 
     const hashedPassword = await hash(password, 10);
 
     await db.insert(users).values({
-      id: crypto.randomUUID(),
       name,
       email,
       password: hashedPassword,

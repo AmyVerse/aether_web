@@ -1,27 +1,41 @@
-export { auth as middleware } from "@/auth";
+import { auth } from "@/auth-edge"; // your Auth.js config
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-// // Role-based protection
-// const path = req.nextUrl.pathname;
-// if (path.startsWith("/teacher") && role !== "TEACHER")
-//   return NextResponse.redirect(new URL("/unauthorized", req.url));
+export async function middleware(req: NextRequest) {
+  const session = await auth(); // Auth.js v5 - automatically detects request
+  console.log("MIDDLEWARE SESSION", session); // check this
+  const pathname = req.nextUrl.pathname;
 
-// if (path.startsWith("/student") && role !== "STUDENT")
-//   return NextResponse.redirect(new URL("/unauthorized", req.url));
+  if (!session?.user) {
+    // Redirect unauthenticated users
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
 
-// if (path.startsWith("/admin") && role !== "ADMIN")
-//   return NextResponse.redirect(new URL("/unauthorized", req.url));
+  const role = session.user.role; // assuming role is stored in session.user
 
-// if (path.startsWith("/editor") && role !== "EDITOR")
-//   return NextResponse.redirect(new URL("/unauthorized", req.url));
+  // Role-based routing
+  if (pathname.startsWith("/teacher") && role !== "teacher") {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+  if (pathname.startsWith("/student") && role !== "student") {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+  if (pathname.startsWith("/editor") && role !== "editor") {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
 
-// return NextResponse.next();
-// }
+  return NextResponse.next(); // allow access
+}
 
-// export const config = {
-//   matcher: [
-//     "/teacher/:path*",
-//     "/student/:path*",
-//     "/admin/:path*",
-//     "/editor/:path*",
-//   ],
-// };
+export const config = {
+  matcher: [
+    "/teacher/:path*",
+    "/student/:path*",
+    "/admin/:path*",
+    "/editor/:path*",
+  ],
+};

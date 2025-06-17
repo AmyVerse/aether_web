@@ -2,7 +2,7 @@
 
 import Toast from "@/components/toast";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FaEnvelope, FaEye, FaEyeSlash, FaLock } from "react-icons/fa";
 
 export default function SignUpClient({
@@ -22,6 +22,8 @@ export default function SignUpClient({
   } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const resendInterval = useRef<NodeJS.Timeout | null>(null);
 
   const formVariants = {
     initial: { x: 100, opacity: 0 },
@@ -157,6 +159,37 @@ export default function SignUpClient({
     }
   };
 
+  // Start timer when OTP step is entered
+  useEffect(() => {
+    if (step === 1) {
+      setResendTimer(60);
+      if (resendInterval.current) clearInterval(resendInterval.current);
+      resendInterval.current = setInterval(() => {
+        setResendTimer((t) => {
+          if (t <= 1) {
+            if (resendInterval.current) clearInterval(resendInterval.current);
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (resendInterval.current) clearInterval(resendInterval.current);
+    };
+  }, [step]);
+
+  // Resend handler
+  const handleResendOtp = async () => {
+    setLoading(true);
+    // await fetch("/api/auth/send-otp", { method: "POST", body: JSON.stringify({ email }), headers: { "Content-Type": "application/json" } });
+    setTimeout(() => {
+      setLoading(false);
+      setResendTimer(60);
+      // Optionally show a toast here
+    }, 1000);
+  };
+
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 4500);
@@ -261,15 +294,32 @@ export default function SignUpClient({
                 onSubmit={handleOtpSubmit}
                 className="w-full"
               >
-                <input
-                  type="text"
-                  placeholder="Enter OTP"
-                  className="w-full py-3 px-4 border border-gray-300 rounded-lg mb-4"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+                <div className="flex flex-col items-center">
+                  <input
+                    type="text"
+                    placeholder="Enter OTP"
+                    className="w-full leading-tight px-4 py-3 border border-gray-300 rounded-lg outline-none mb-2"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    required={step === 1}
+                    autoFocus={step === 1}
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={resendTimer > 0 || loading}
+                    className={`text-sm font-medium mb-5 ${
+                      resendTimer > 0 || loading
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-indigo-600 hover:underline"
+                    }`}
+                  >
+                    {resendTimer > 0
+                      ? `Resend available in ${resendTimer}s`
+                      : "Didn't receive OTP? Resend."}
+                  </button>
+                </div>
                 <button
                   type="submit"
                   className="w-full font-[poppins] bg-gray-800 text-white py-3 rounded-lg hover:bg-gray-900 transition"

@@ -4,7 +4,7 @@ import {
   integer,
   pgEnum,
   pgTable,
-  primaryKey,
+  serial,
   text,
   time,
   timestamp,
@@ -75,47 +75,41 @@ export const attendanceStatusEnum = pgEnum("attendance_status_enum", [
 
 // --- Auth Schema ---
 
-export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Auth.js internal ID
+export const users = pgTable("user", {
+  id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   name: text("name").default("User"),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   password: text("password"), // only used for credentials login
   role: text("role").default("student"), // 'student' | 'teacher' | 'admin'
-  roleId: text("role_id").notNull(), // your student/teacher ID
+  roleId: text("role_id"), // your student/teacher ID
 });
 
-export const sessions = pgTable("sessions", {
-  sessionToken: text("session_token").primaryKey(),
-  userId: text("user_id").notNull(),
-  expires: timestamp("expires", { withTimezone: true }).notNull(),
+export const sessions = pgTable("session", {
+  sessionToken: text("sessionToken").primaryKey().notNull(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
-export const accounts = pgTable(
-  "accounts",
-  {
-    userId: text("user_id").notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
-    type: text("type").notNull(), // 'oauth'
-    access_token: text("access_token"),
-    expires_at: timestamp("expires_at", { withTimezone: true }),
-    id_token: text("id_token"),
-    scope: text("scope"),
-    token_type: text("token_type"),
-  },
-  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
-);
-
-export const verificationTokens = pgTable(
-  "verification_tokens",
-  {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
-    expires: timestamp("expires", { withTimezone: true }).notNull(),
-  },
-  (t) => [primaryKey({ columns: [t.identifier, t.token] })],
-);
+export const accounts = pgTable("account", {
+  id: serial("id").primaryKey().notNull().unique(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 255 }).notNull(),
+  provider: varchar("provider", { length: 255 }).notNull(),
+  providerAccountId: varchar("providerAccountId", { length: 255 }).notNull(),
+  refresh_token: text("refresh_token"),
+  access_token: text("access_token"),
+  expires_at: timestamp("expires_at", { mode: "date" }),
+  token_type: varchar("token_type", { length: 255 }),
+  scope: varchar("scope", { length: 255 }),
+  id_token: text("id_token"),
+  session_state: varchar("session_state", { length: 255 }),
+});
 
 // --- ERP Schema ---
 

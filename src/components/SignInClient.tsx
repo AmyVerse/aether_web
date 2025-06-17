@@ -1,7 +1,7 @@
 "use client";
 
+import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FaEnvelope, FaLock } from "react-icons/fa";
 
@@ -9,34 +9,29 @@ export default function SignInClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const { status } = useSession();
 
-  // Dummy login handler for UI testing (no next-auth)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    // Simulate login delay
-    setTimeout(() => {
-      setLoading(false);
-      if (email && password) {
-        router.push("/dashboard");
-      } else {
-        setError("Invalid email or password");
-      }
-    }, 1200);
+    setError("");
+    setLoading(false);
   };
 
-  // Dummy Google sign in for UI testing
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    setTimeout(() => {
-      setGoogleLoading(false);
-      router.push("/dashboard");
-    }, 1200);
+    await signIn("google", { callbackUrl: "/" });
   };
+
+  if (status === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-gray-500 animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
@@ -46,7 +41,6 @@ export default function SignInClient() {
           <p className="text-gray-400 mb-10 font-light font-[inter] leading-relaxed text-2">
             Enter your credentials to access your account.
           </p>
-
           <form onSubmit={handleSubmit}>
             <div className="relative mb-4">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -59,9 +53,9 @@ export default function SignInClient() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading || googleLoading}
               />
             </div>
-
             <div className="relative mb-6">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                 <FaLock />
@@ -73,11 +67,10 @@ export default function SignInClient() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading || googleLoading}
               />
             </div>
-
             {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
-
             <button
               type="submit"
               disabled={loading || googleLoading}

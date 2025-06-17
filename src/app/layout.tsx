@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
 import { Inter, Manrope, Poppins } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -43,7 +44,7 @@ export default function RootLayout({
       <body
         className={`${funnel.variable} ${poppins.variable} ${inter.variable} ${manrope.variable} antialiased`}
       >
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );
