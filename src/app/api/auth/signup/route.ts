@@ -4,20 +4,26 @@ import { hash } from "bcrypt";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+// Helper to normalize email
+function normalizeEmail(email: string | undefined | null) {
+  return (email || "").trim().toLowerCase();
+}
+
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
+    const normalizedEmail = normalizeEmail(email);
 
-    // Check students and teachers for roleId, role, and name
+    // Check students and teachers for roleId, role, and name (normalized email)
     const student = await db
       .select()
       .from(students)
-      .where(eq(students.email, email))
+      .where(eq(students.email, normalizedEmail))
       .limit(1);
     const teacher = await db
       .select()
       .from(teachers)
-      .where(eq(teachers.email, email))
+      .where(eq(teachers.email, normalizedEmail))
       .limit(1);
 
     let roleId: string | null = null; // Default roleId
@@ -38,7 +44,7 @@ export async function POST(req: Request) {
 
     await db.insert(users).values({
       name,
-      email,
+      email: normalizedEmail, // Store normalized (lowercase) email!
       password: hashedPassword,
       roleId,
       role,

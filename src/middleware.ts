@@ -6,9 +6,6 @@ export async function middleware(req: NextRequest) {
   // Get the session (session-based, not JWT)
   const session = await auth();
 
-  // Debug: log session in Vercel/Edge logs
-  console.log("MIDDLEWARE SESSION", session);
-
   const pathname = req.nextUrl.pathname;
 
   // Require authentication

@@ -60,7 +60,7 @@ export default function SignInClient() {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    await signIn("google"); // callbackUrl is optional, let useSession handle redirect
+    await signIn("google");
     setGoogleLoading(false);
   };
 
