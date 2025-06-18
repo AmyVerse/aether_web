@@ -8,6 +8,27 @@
       "when": 1750093421302,
       "tag": "0000_lame_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1750180856634,
+      "tag": "0001_rainy_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750182709890,
+      "tag": "0002_low_miek",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1750212287088,
+      "tag": "0003_next_norrin_radd",
+      "breakpoints": true
     }
   ]
 }

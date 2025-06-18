@@ -2,7 +2,8 @@
 
 import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { FaEnvelope, FaLock } from "react-icons/fa";
 
 export default function SignInClient() {
@@ -11,27 +12,59 @@ export default function SignInClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { status } = useSession();
+
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  // Role-based redirect after successful login
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      switch (session.user.role) {
+        case "teacher":
+          router.replace("/teacher/dashboard");
+          break;
+        case "student":
+          router.replace("/student/dashboard");
+          break;
+        case "admin":
+          router.replace("/admin/dashboard");
+          break;
+        case "editor":
+          router.replace("/editor/dashboard");
+          break;
+        default:
+          router.replace("/unauthorized");
+      }
+    }
+  }, [status, session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+    setLoading(true);
+    const result = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+    });
     setLoading(false);
+    if (result?.error) {
+      setError(
+        result.error === "CredentialsSignin"
+          ? "Invalid email or password"
+          : result.error,
+      );
+    }
+    // No redirect here! Let useSession/useEffect handle routing by role.
   };
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    await signIn("google", { callbackUrl: "/" });
+    await signIn("google"); // callbackUrl is optional, let useSession handle redirect
+    setGoogleLoading(false);
   };
 
-  if (status === "loading") {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-gray-500 animate-pulse">Loading...</div>
-      </div>
-    );
-  }
+  const isDisabled = loading || googleLoading;
 
   return (
     <div className="font-[manrope] flex items-center justify-center bg-[#f3f5fe] px-2">
@@ -53,7 +86,7 @@ export default function SignInClient() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={loading || googleLoading}
+                disabled={isDisabled}
               />
             </div>
             <div className="relative mb-6">
@@ -67,14 +100,16 @@ export default function SignInClient() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={loading || googleLoading}
+                disabled={isDisabled}
               />
             </div>
             {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
             <button
               type="submit"
-              disabled={loading || googleLoading}
-              className="w-full leading-tight bg-gray-800 font-[poppins] text-white py-3 mb-3 rounded-lg hover:bg-gray-900 transition"
+              disabled={isDisabled}
+              className={`w-full leading-tight bg-gray-800 font-[poppins] text-white py-3 mb-3 rounded-lg hover:bg-gray-900 transition ${
+                isDisabled ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               {loading ? (
                 <span>
@@ -107,7 +142,7 @@ export default function SignInClient() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={loading || googleLoading}
+            disabled={isDisabled}
             className="w-full flex items-center leading-tight justify-center gap-2 bg-white border border-gray-300 text-gray-700 font-[poppins] py-3 rounded-lg hover:bg-gray-100 transition shadow"
           >
             {googleLoading ? (

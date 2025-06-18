@@ -1,20 +1,24 @@
-import { auth } from "@/auth-edge"; // your Auth.js config
+import { auth } from "@/auth"; // import your NextAuth config (session-based)
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  const session = await auth(); // Auth.js v5 - automatically detects request
-  console.log("MIDDLEWARE SESSION", session); // check this
+  // Get the session (session-based, not JWT)
+  const session = await auth();
+
+  // Debug: log session in Vercel/Edge logs
+  console.log("MIDDLEWARE SESSION", session);
+
   const pathname = req.nextUrl.pathname;
 
+  // Require authentication
   if (!session?.user) {
-    // Redirect unauthenticated users
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
 
-  const role = session.user.role; // assuming role is stored in session.user
+  const role = session.user.role?.toLowerCase?.();
 
-  // Role-based routing
+  // Role-based route protection
   if (pathname.startsWith("/teacher") && role !== "teacher") {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
@@ -28,9 +32,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
 
-  return NextResponse.next(); // allow access
+  // All checks passed, continue
+  return NextResponse.next();
 }
 
+// Match protected routes
 export const config = {
   matcher: [
     "/teacher/:path*",

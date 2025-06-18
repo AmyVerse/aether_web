@@ -2,10 +2,31 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+
+const roleRedirects: Record<string, { path: string; label: string }> = {
+  teacher: { path: "/teacher/dashboard", label: "Teacher Dashboard" },
+  student: { path: "/student/dashboard", label: "Student Dashboard" },
+  admin: { path: "/admin/dashboard", label: "Admin Dashboard" },
+  editor: { path: "/editor/dashboard", label: "Editor Dashboard" },
+};
 
 export default function RedirectingPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [countdown, setCountdown] = useState(3);
+
+  // Determine redirect path and label based on user's role
+  let redirectPath = "/";
+  let destinationLabel = "Landing Page";
+
+  if (status === "authenticated" && session?.user?.role) {
+    const match = roleRedirects[session.user.role];
+    if (match) {
+      redirectPath = match.path;
+      destinationLabel = match.label;
+    }
+  }
 
   useEffect(() => {
     let count = 3;
@@ -15,11 +36,11 @@ export default function RedirectingPage() {
       setCountdown(count);
       if (count === 0) {
         clearInterval(interval);
-        router.push("/");
+        router.replace(redirectPath);
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [router]);
+  }, [router, redirectPath]);
 
   return (
     <div className="min-h-screen flex items-center justify-center font-[manrope] bg-gray-100">
@@ -28,7 +49,7 @@ export default function RedirectingPage() {
           Unauthorized Access
         </p>
         <p className="text-lg text-gray-500 mb-2">
-          Redirecting to Landing page in {countdown}
+          Redirecting to {destinationLabel} in {countdown}
         </p>
       </div>
     </div>

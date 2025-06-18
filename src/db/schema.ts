@@ -104,7 +104,7 @@ export const accounts = pgTable("account", {
   providerAccountId: varchar("providerAccountId", { length: 255 }).notNull(),
   refresh_token: text("refresh_token"),
   access_token: text("access_token"),
-  expires_at: timestamp("expires_at", { mode: "date" }),
+  expires_at: integer("expires_at"),
   token_type: varchar("token_type", { length: 255 }),
   scope: varchar("scope", { length: 255 }),
   id_token: text("id_token"),
