@@ -1,12 +1,10 @@
 import { db } from "@/index";
-import { verifyPassword } from "@/utils/auth";
 import { getUserByEmail } from "@/utils/auth-helpers";
+import { verifyPassword } from "@/utils/verifyPassword";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { eq, and } from "drizzle-orm";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { accounts, students, teachers, users } from "./db/schema";
 
 function normalizeEmail(email: string | null | undefined): string {
   return (email || "").trim().toLowerCase();
@@ -31,8 +29,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           user.password,
         );
         if (!isValid) return null;
+        const { ...safeUser } = user;
         return {
-          ...user,
+          ...safeUser,
           role: user.role ?? "student",
           roleId: (user.roleId as string) ?? "",
         };
@@ -41,55 +40,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_ID!,
       clientSecret: process.env.GOOGLE_SECRET!,
-      profile(profile) {
-        return {
-          ...profile,
-          email: normalizeEmail(profile.email),
-        };
-      },
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
-  events: {
-    async createUser({ user }) {
-      const email = normalizeEmail(user.email as string);
-      // Find student or teacher by email
-      const [student] = await db
-        .select()
-        .from(students)
-        .where(eq(students.email, email as string))
-        .limit(1);
-      const [teacher] = await db
-        .select()
-        .from(teachers)
-        .where(eq(teachers.email, email as string))
-        .limit(1);
 
-      let roleId: string | null = null;
-      let role: string = "student";
-      let name: string = user.name || "User";
-
-      if (student) {
-        roleId = student.id;
-        role = "student";
-        name = student.name || name;
-      } else if (teacher) {
-        roleId = teacher.id;
-        role = "teacher";
-        name = teacher.name || name;
-      }
-
-      // Patch the user record in users table
-      await db
-        .update(users)
-        .set({
-          name,
-          role,
-          roleId: roleId ?? "",
-          email: email ?? "",
-        })
-        .where(eq(users.id, user.id));
-    },
-  },
   session: {
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60,
@@ -128,56 +82,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.email = token.email as string;
         session.user.image = token.picture;
       }
-      console.log(session.user); // show id, role, roleId, etc.
       return session;
-    },
-
-    async signIn({ user, account }) {
-      if (account?.provider === "google") {
-        const email = normalizeEmail(user.email);
-        const existingUser = await getUserByEmail(email);
-
-        if (existingUser) {
-          // Check if Google account is already linked
-          const [existingAccount] = await db
-            .select()
-            .from(accounts)
-            .where(
-              and(
-                eq(accounts.userId, existingUser.id),
-                eq(accounts.provider, "google"),
-                eq(accounts.providerAccountId, account.providerAccountId),
-              ),
-            )
-            .limit(1);
-
-          if (!existingAccount) {
-            // Only link if not already linked
-            await db.insert(accounts).values({
-              userId: existingUser.id,
-              type: "oauth",
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-              access_token: account.access_token,
-              refresh_token: account.refresh_token,
-              id_token: account.id_token,
-              expires_at: account.expires_at,
-            });
-          }
-
-          // Always update name and image from Google (even if not null)
-          await db
-            .update(users)
-            .set({
-              name: user.name,
-              image: user.image,
-            })
-            .where(eq(users.id, existingUser.id));
-
-          return true; // allow sign in
-        }
-      }
-      return true; // allow sign in for credentials or new Google users
     },
   },
   pages: {

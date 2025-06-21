@@ -10,22 +10,22 @@ export async function middleware(req: NextRequest) {
 
   // Require authentication
   if (!session?.user) {
-    return NextResponse.redirect(new URL("/unauthorized", req.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   const role = session.user.role?.toLowerCase?.();
 
-  // Role-based route protection
-  if (pathname.startsWith("/teacher") && role !== "teacher") {
+  // Role-based route protection for dashboard
+  if (pathname.startsWith("/dashboard/teacher") && role !== "teacher") {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
-  if (pathname.startsWith("/student") && role !== "student") {
+  if (pathname.startsWith("/dashboard/student") && role !== "student") {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
-  if (pathname.startsWith("/admin") && role !== "admin") {
+  if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
-  if (pathname.startsWith("/editor") && role !== "editor") {
+  if (pathname.startsWith("/dashboard/editor") && role !== "editor") {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }
 
@@ -33,12 +33,13 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Match protected routes
+// Match protected dashboard routes
 export const config = {
   matcher: [
-    "/teacher/:path*",
-    "/student/:path*",
-    "/admin/:path*",
-    "/editor/:path*",
+    "/dashboard/teacher/:path*",
+    "/dashboard/student/:path*",
+    "/dashboard/admin/:path*",
+    "/dashboard/editor/:path*",
+    "/dashboard/setup/:path*",
   ],
 };

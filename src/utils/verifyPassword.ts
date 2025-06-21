@@ -10,7 +10,6 @@ async function verifyPassword(
   plainPassword: string,
   hashedPassword: string,
 ): Promise<boolean> {
-  // Import bcrypt here if not already imported at the top
   const bcrypt = await import("bcrypt");
   return bcrypt.compare(plainPassword, hashedPassword);
 }

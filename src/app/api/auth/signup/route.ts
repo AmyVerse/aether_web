@@ -26,9 +26,9 @@ export async function POST(req: Request) {
       .where(eq(teachers.email, normalizedEmail))
       .limit(1);
 
-    let roleId: string | null = null; // Default roleId
-    let role: string = "student"; // Default role
-    let name: string = "User"; // Default name
+    let roleId: string | null = null;
+    let role: string | null = null;
+    let name: string = "User";
 
     if (student.length > 0) {
       roleId = student[0].id;
@@ -44,10 +44,10 @@ export async function POST(req: Request) {
 
     await db.insert(users).values({
       name,
-      email: normalizedEmail, // Store normalized (lowercase) email!
+      email: normalizedEmail,
       password: hashedPassword,
-      roleId,
-      role,
+      roleId: roleId,
+      role: role,
     });
 
     return NextResponse.json({ message: "User created" }, { status: 201 });

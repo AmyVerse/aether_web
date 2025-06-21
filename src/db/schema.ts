@@ -82,7 +82,7 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   password: text("password"), // only used for credentials login
-  role: text("role").default("student"), // 'student' | 'teacher' | 'admin'
+  role: text("role"), // 'student' | 'teacher' | 'admin'
   roleId: text("role_id"), // your student/teacher ID
 });
 
