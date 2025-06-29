@@ -1,18 +1,22 @@
-import { generateOtp } from "@/utils/otp";
+import { generateOtpWithExpiry } from "@/utils/otp";
 import { cookies } from "next/headers";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export async function sendOtp(email: string) {
-  const otp = generateOtp();
+  const { otp, expiresAt } = generateOtpWithExpiry(6, 10); // 6-digit OTP, 10 minutes expiry
 
   const cookieStore = cookies();
-  (await cookieStore).set(`otp-${email}`, otp, {
+
+  // Store OTP with expiry time as JSON
+  const otpData = JSON.stringify({ otp, expiresAt });
+
+  (await cookieStore).set(`otp-${email}`, otpData, {
     httpOnly: true,
-    maxAge: 300,
+    maxAge: 600, // 10 minutes in seconds
     path: "/",
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
 

@@ -1,318 +1,198 @@
 "use client";
+import TimetableGrid from "@/components/dashboard/timetable-grid";
+import DashboardLayout from "@/components/layout/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  FaCalendarAlt,
+  FaChevronDown,
+  FaChevronRight,
+  FaTable,
+} from "react-icons/fa";
 
-import { useEffect, useState } from "react";
-import { FaCheck, FaPencilAlt } from "react-icons/fa"; // update import
-
-type SessionType = "Lecture" | "Lab" | "Tutorial" | "Extras";
-type DayOfWeek = number; // 0=Sun, 1=Mon, ..., 6=Sat
-
-interface RecurringClassForm {
-  teacher_id: string;
-  subject_id: string;
-  group_id: string;
-  days_of_week: DayOfWeek[];
-  start_time: string;
-  end_time: string;
-  session_type: SessionType | "";
-  semester_start_date: string; // YYYY-MM-DD
-  semester_end_date: string; // YYYY-MM-DD
-}
-
-function formatDateDisplay(dateStr: string) {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-export default function RecurringScheduleForm() {
-  const [form, setForm] = useState<RecurringClassForm>({
-    teacher_id: "",
-    subject_id: "",
-    group_id: "",
-    days_of_week: [],
-    start_time: "",
-    end_time: "",
-    session_type: "",
-    semester_start_date: "",
-    semester_end_date: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [semesterDates, setSemesterDates] = useState<{
-    start: string;
-    end: string;
-  }>({
-    start: "",
-    end: "",
-  });
-  const [editingSemester, setEditingSemester] = useState(false);
-  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
-  const [subjects, setSubjects] = useState<
-    { id: string; code: string; name: string }[]
-  >([]);
-  const [groups, setGroups] = useState<
-    {
-      id: string;
-      section: string;
-      branch: string;
-      name: string;
-      semester: string | number;
-    }[]
-  >([]);
-
-  // Fetch teachers, subjects, and groups on component mount
-  useEffect(() => {
-    fetch("/api/admin/teachers")
-      .then((res) => res.json())
-      .then((data) => setTeachers(data.teachers || []));
-    fetch("/api/admin/subjects")
-      .then((res) => res.json())
-      .then((data) => setSubjects(data.subjects || []));
-    fetch("/api/admin/groups")
-      .then((res) => res.json())
-      .then((data) => setGroups(data.groups || []));
-  }, []);
-
-  // When semesterDates change, update form fields
-  const handleSemesterDateChange = (field: "start" | "end", value: string) => {
-    setSemesterDates((prev) => ({ ...prev, [field]: value }));
-    setForm((prev) => ({
-      ...prev,
-      semester_start_date: field === "start" ? value : prev.semester_start_date,
-      semester_end_date: field === "end" ? value : prev.semester_end_date,
-    }));
-  };
-
-  const handleCheckboxChange = (day: DayOfWeek) => {
-    setForm((prev) => {
-      const updatedDays = prev.days_of_week.includes(day)
-        ? prev.days_of_week.filter((d) => d !== day)
-        : [...prev.days_of_week, day];
-      return { ...prev, days_of_week: updatedDays };
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const res = await fetch("/api/admin/setup-recurring", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Recurring class scheduled successfully.");
-      } else {
-        setMessage(data.error || "Error submitting form.");
-      }
-    } catch {
-      setMessage("Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isDateInvalid =
-    !!semesterDates.start &&
-    !!semesterDates.end &&
-    new Date(semesterDates.end) < new Date(semesterDates.start);
+export default function EditorDashboard() {
+  const [currentView, setCurrentView] = useState<"timetable" | "overview">(
+    "timetable",
+  );
+  const [academicYear, setAcademicYear] = useState("2024-25");
+  const [semesterType, setSemesterType] = useState<"odd" | "even">("even");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex gap-8 items-start">
-      {/* Left: Add Class Button & Form */}
-      <div className="flex-1">
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="mb-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+    <DashboardLayout
+      title="Editor Dashboard"
+      subtitle="Manage timetables and class schedules"
+    >
+      <div className="flex gap-6">
+        {/* Sidebar */}
+        <div
+          className={`${sidebarCollapsed ? "w-16" : "w-80"} transition-all duration-300 flex-shrink-0`}
         >
-          {showForm ? "Hide Add Class Form" : "Add Class"}
-        </button>
-        {showForm && (
-          <form
-            onSubmit={handleSubmit}
-            className="max-w-xl mx-auto space-y-4 p-4 border rounded-md shadow bg-white"
-          >
-            <h2 className="text-xl font-bold mb-2">Schedule Recurring Class</h2>
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle
+                className={`text-lg ${sidebarCollapsed ? "hidden" : "block"}`}
+              >
+                Controls
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              >
+                {sidebarCollapsed ? <FaChevronRight /> : <FaChevronDown />}
+              </Button>
+            </CardHeader>
 
-            <select
-              value={form.teacher_id}
-              onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
-              className="input"
-              required
-            >
-              <option value="">Select Teacher</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            {!sidebarCollapsed && (
+              <CardContent className="space-y-6">
+                {/* Academic Year & Semester */}
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-900">
+                    Academic Session
+                  </h3>
+                  <div className="space-y-2">
+                    <select
+                      value={academicYear}
+                      onChange={(e) => setAcademicYear(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="2024-25">2024-25</option>
+                      <option value="2023-24">2023-24</option>
+                      <option value="2025-26">2025-26</option>
+                    </select>
 
-            <select
-              value={form.subject_id}
-              onChange={(e) => setForm({ ...form, subject_id: e.target.value })}
-              className="input"
-              required
-            >
-              <option value="">Select Subject</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.code} - {s.name}
-                </option>
-              ))}
-            </select>
+                    <select
+                      value={semesterType}
+                      onChange={(e) =>
+                        setSemesterType(e.target.value as "odd" | "even")
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="odd">Odd Semester</option>
+                      <option value="even">Even Semester</option>
+                    </select>
+                  </div>
+                </div>
 
-            <select
-              value={form.group_id}
-              onChange={(e) => setForm({ ...form, group_id: e.target.value })}
-              className="input"
-              required
-            >
-              <option value="">Select Group</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.branch} ({g.name}) - Semester {g.semester}
-                </option>
-              ))}
-            </select>
+                {/* View Toggle */}
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-900">View Mode</h3>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant={
+                        currentView === "timetable" ? "default" : "outline"
+                      }
+                      onClick={() => setCurrentView("timetable")}
+                      className="w-full justify-start"
+                    >
+                      <FaTable className="mr-2" />
+                      Timetable View
+                    </Button>
+                    <Button
+                      variant={
+                        currentView === "overview" ? "default" : "outline"
+                      }
+                      onClick={() => setCurrentView("overview")}
+                      className="w-full justify-start"
+                    >
+                      <FaCalendarAlt className="mr-2" />
+                      Overview
+                    </Button>
+                  </div>
+                </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold">Days of the Week:</label>
-              <div className="flex flex-wrap gap-2">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day, i) => (
-                    <label key={i} className="flex items-center space-x-1">
-                      <input
-                        type="checkbox"
-                        checked={form.days_of_week.includes(i)}
-                        onChange={() => handleCheckboxChange(i)}
-                      />
-                      <span>{day}</span>
-                    </label>
-                  )
-                )}
-              </div>
+                {/* Quick Stats */}
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-900">Quick Stats</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Total Rooms</span>
+                      <span className="font-semibold">24</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">
+                        Classes Today
+                      </span>
+                      <span className="font-semibold">156</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Conflicts</span>
+                      <span className="font-semibold text-red-600">3</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1">
+          {currentView === "timetable" ? (
+            <TimetableGrid
+              academicYear={academicYear}
+              semesterType={semesterType}
+            />
+          ) : (
+            <div className="space-y-6">
+              {/* Overview Content */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Activities</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          Excel imported successfully
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          2024-25 Even Semester - 156 entries
+                        </p>
+                      </div>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        2 hours ago
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          Room CR-201 schedule updated
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Added CSE-A Semester 4 classes
+                        </p>
+                      </div>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        5 hours ago
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium">Conflict detected</p>
+                        <p className="text-xs text-gray-600">
+                          CR-102 double booking on Monday 10:00
+                        </p>
+                      </div>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        1 day ago
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-
-            <input
-              type="time"
-              value={form.start_time}
-              onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-              className="input"
-              required
-            />
-            <input
-              type="time"
-              value={form.end_time}
-              onChange={(e) => setForm({ ...form, end_time: e.target.value })}
-              className="input"
-            />
-
-            <select
-              value={form.session_type}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  session_type: e.target.value as SessionType,
-                })
-              }
-              className="input"
-              required
-            >
-              <option value="">Select Session Type</option>
-              <option value="Lecture">Lecture</option>
-              <option value="Lab">Lab</option>
-              <option value="Tutorial">Tutorial</option>
-              <option value="Extras">Extras</option>
-            </select>
-
-            <button
-              type="submit"
-              disabled={loading || isDateInvalid}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? "Scheduling..." : "Schedule"}
-            </button>
-
-            {message && <p className="mt-2 text-sm text-gray-700">{message}</p>}
-          </form>
-        )}
+          )}
+        </div>
       </div>
-
-      {/* Right: Semester Info and Date Pickers */}
-      <div className="flex flex-col items-start bg-white p-6 rounded shadow min-w-[300px]">
-        <div className="flex items-center gap-2 font-bold text-lg mb-4">
-          Jan-May Semester 2025
-          <button
-            type="button"
-            aria-label={
-              editingSemester
-                ? "Done editing semester dates"
-                : "Edit semester dates"
-            }
-            className="ml-2 text-gray-500 hover:text-blue-600"
-            onClick={() => setEditingSemester((v) => !v)}
-          >
-            {editingSemester ? <FaCheck /> : <FaPencilAlt />}
-          </button>
-        </div>
-        <div className="mb-2">
-          <span className="font-medium">Semester Start:</span>{" "}
-          <span className="text-gray-900">
-            {semesterDates.start ? (
-              formatDateDisplay(semesterDates.start)
-            ) : (
-              <span className="text-gray-400">Not set</span>
-            )}
-          </span>
-        </div>
-        <div className="mb-2">
-          <span className="font-medium">Semester End:</span>{" "}
-          <span className="text-gray-900">
-            {semesterDates.end ? (
-              formatDateDisplay(semesterDates.end)
-            ) : (
-              <span className="text-gray-400">Not set</span>
-            )}
-          </span>
-        </div>
-        {editingSemester && (
-          <div className="w-full mt-2">
-            <label className="mb-1 font-medium block">Edit Start Date:</label>
-            <input
-              type="date"
-              value={semesterDates.start}
-              onChange={(e) =>
-                handleSemesterDateChange("start", e.target.value)
-              }
-              className="input mb-2 w-full"
-            />
-            <label className="mb-1 font-medium block">Edit End Date:</label>
-            <input
-              type="date"
-              value={semesterDates.end}
-              onChange={(e) => handleSemesterDateChange("end", e.target.value)}
-              className="input w-full"
-            />
-            {isDateInvalid && (
-              <div className="text-red-600 text-sm mt-2">
-                End date must be after start date.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }

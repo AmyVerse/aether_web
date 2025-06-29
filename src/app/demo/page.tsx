@@ -1,0 +1,56 @@
+"use client";
+import ToastDemo from "@/components/demo/toast-demo";
+import DashboardLayout from "@/components/layout/dashboard-layout";
+
+export default function DemoPage() {
+  return (
+    <DashboardLayout
+      title="Component Demos"
+      subtitle="Interactive component demonstrations"
+    >
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            Aether UI Components Demo
+          </h1>
+          <p className="text-gray-600 mb-8">
+            Test and explore the modern UI components used throughout the Aether
+            platform.
+          </p>
+        </div>
+
+        <div className="grid gap-8">
+          {/* Toast Demo Section */}
+          <section>
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                Toast Notifications
+              </h2>
+              <p className="text-gray-600">
+                Modern toast notifications with progress timers and multiple
+                variants.
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <ToastDemo />
+            </div>
+          </section>
+
+          {/* Future Demo Sections */}
+          <section className="opacity-50">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                More Components Coming Soon
+              </h2>
+              <p className="text-gray-600">
+                Dashboard widgets, forms, modals, and more component demos will
+                be added here.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

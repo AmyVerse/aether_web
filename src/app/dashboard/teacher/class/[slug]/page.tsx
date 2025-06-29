@@ -1,8 +1,13 @@
 "use client";
 
+import DashboardLayout from "@/components/layout/dashboard-layout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/useToast";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FaTimes } from "react-icons/fa";
+import { FaCheck, FaTimes, FaUser } from "react-icons/fa";
 
 interface StudentAttendance {
   student_id: string;
@@ -13,6 +18,7 @@ interface StudentAttendance {
 
 export default function AttendancePage() {
   const { slug } = useParams();
+  const { showSuccess, showError } = useToast();
   const sessionId =
     typeof slug === "string" ? slug : Array.isArray(slug) ? slug[0] : "";
   const [students, setStudents] = useState<StudentAttendance[]>([]);
@@ -21,9 +27,9 @@ export default function AttendancePage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Track locally changed statuses for submit
-  const [, setChangedStatus] = useState<Record<string, "Present" | "Absent">>(
-    {},
-  );
+  const [changedStatus, setChangedStatus] = useState<
+    Record<string, "Present" | "Absent">
+  >({});
 
   const fetchAttendance = async () => {
     if (!sessionId) {
@@ -44,7 +50,7 @@ export default function AttendancePage() {
         setStudents(
           data.students.map((s: StudentAttendance) => ({
             ...s,
-            attendance_status: s.attendance_status || "Present", // i like this one
+            attendance_status: s.attendance_status || "Present",
           })),
         );
       }
@@ -83,11 +89,12 @@ export default function AttendancePage() {
     }));
   };
 
-  // Submit only changed statuses to DB (example, not implemented)
+  // Submit only changed statuses to DB
   const handleSubmitStatus = async () => {
     setSubmitting(true);
+    setError("");
     try {
-      await fetch(`/api/attendance/${sessionId}`, {
+      const response = await fetch(`/api/attendance/${sessionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,9 +104,17 @@ export default function AttendancePage() {
           })),
         }),
       });
-      alert("Statuses updated in database!");
-    } catch {
-      alert("Failed to update statuses.");
+
+      if (!response.ok) {
+        throw new Error("Failed to update attendance");
+      }
+
+      // Clear changed status after successful submit
+      setChangedStatus({});
+      showSuccess("Attendance updated successfully!");
+    } catch (error) {
+      showError("Failed to update attendance. Please try again.");
+      console.error("Attendance update error:", error);
     } finally {
       setSubmitting(false);
     }
@@ -115,115 +130,163 @@ export default function AttendancePage() {
   ).length;
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Attendance Viewer</h2>
-      <p className="mb-4">
-        <b>Session ID:</b> {sessionId}
-      </p>
-
-      <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-blue-100 border border-blue-200 rounded-lg p-5 flex flex-col items-center shadow">
-          <span className="text-2xl font-bold text-blue-700">{total}</span>
-          <span className="text-gray-700 mt-1">Total Students</span>
-        </div>
-        <div className="bg-green-100 border border-green-200 rounded-lg p-5 flex flex-col items-center shadow">
-          <span className="text-2xl font-bold text-green-700">{present}</span>
-          <span className="text-gray-700 mt-1">Present</span>
-        </div>
-        <div className="bg-red-100 border border-red-200 rounded-lg p-5 flex flex-col items-center shadow">
-          <span className="text-2xl font-bold text-red-700">{absent}</span>
-          <span className="text-gray-700 mt-1">Absent</span>
-        </div>
-      </div>
-
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      <div className="mb-3 text-md font-bold text-black text-left">
-        Click cards or cross to toggle present/absent status
-      </div>
-
-      <ul className="space-y-3 mb-6">
-        {students.map((student) => (
-          <li
-            key={student.student_id}
-            className={`flex items-center justify-between border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer px-4 py-3
-              ${
-                student.attendance_status === "Present"
-                  ? "bg-green-50 border-green-400"
-                  : "bg-red-50 border-red-400"
-              }`}
-            onClick={() => handleToggleStatus(student.student_id)}
-          >
-            <div>
-              <p className="font-semibold text-lg">{student.roll_number}</p>
-              <p className="text-gray-700">{student.name}</p>
+    <DashboardLayout
+      title="Class Attendance"
+      subtitle={`Session ID: ${sessionId}`}
+    >
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card className="text-center">
+          <div className="flex flex-col items-center">
+            <div className="text-3xl font-bold text-blue-600 mb-2">{total}</div>
+            <div className="text-gray-600 flex items-center gap-2">
+              <FaUser className="text-blue-500" />
+              Total Students
             </div>
-            <div className="flex items-center gap-3">
-              <span
-                className={`inline-block w-20 text-center py-1 rounded-full font-semibold text-sm
-                  ${
-                    student.attendance_status === "Present"
-                      ? "bg-green-200 text-green-800"
-                      : "bg-red-200 text-red-800"
-                  }`}
-              >
-                {student.attendance_status}
-              </span>
-              <button
-                className={`ml-2 p-2 rounded-full border-2 transition
-                  ${
-                    student.attendance_status === "Present"
-                      ? "border-green-400 text-green-700 hover:bg-green-100"
-                      : "border-red-400 text-red-700 hover:bg-red-100"
-                  }`}
-                title="Toggle Status"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleStatus(student.student_id);
-                }}
-              >
-                <FaTimes />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+          </div>
+        </Card>
 
-      <div className="mb-4 flex justify-center gap-4">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
-          onClick={handleSubmitStatus}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <>
-              <svg
-                className="animate-spin h-5 w-5 mr-2 inline-block"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
-              </svg>
-              Submitting...
-            </>
-          ) : (
-            "Submit Attendance Status"
-          )}
-        </button>
+        <Card className="text-center">
+          <div className="flex flex-col items-center">
+            <div className="text-3xl font-bold text-green-600 mb-2">
+              {present}
+            </div>
+            <div className="text-gray-600 flex items-center gap-2">
+              <FaCheck className="text-green-500" />
+              Present
+            </div>
+          </div>
+        </Card>
+
+        <Card className="text-center">
+          <div className="flex flex-col items-center">
+            <div className="text-3xl font-bold text-red-600 mb-2">{absent}</div>
+            <div className="text-gray-600 flex items-center gap-2">
+              <FaTimes className="text-red-500" />
+              Absent
+            </div>
+          </div>
+        </Card>
       </div>
-    </div>
+
+      {/* Loading and Error States */}
+      {loading && (
+        <Card className="text-center">
+          <div className="flex items-center justify-center gap-2">
+            <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+            Loading attendance data...
+          </div>
+        </Card>
+      )}
+
+      {error && (
+        <Card className="mb-6">
+          <div className="text-red-600 text-center">{error}</div>
+        </Card>
+      )}
+
+      {/* Attendance List */}
+      {!loading && students.length > 0 && (
+        <Card>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold mb-2">Student Attendance</h3>
+            <p className="text-sm text-gray-600">
+              Click on students to toggle attendance status
+            </p>
+          </div>
+
+          <div className="space-y-3 mb-6">
+            {students.map((student) => (
+              <div
+                key={student.student_id}
+                className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all hover:shadow-sm ${
+                  student.attendance_status === "Present"
+                    ? "bg-green-50 border-green-200 hover:bg-green-100"
+                    : "bg-red-50 border-red-200 hover:bg-red-100"
+                }`}
+                onClick={() => handleToggleStatus(student.student_id)}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                      student.attendance_status === "Present"
+                        ? "bg-green-500"
+                        : "bg-red-500"
+                    }`}
+                  >
+                    {student.attendance_status === "Present" ? (
+                      <FaCheck />
+                    ) : (
+                      <FaTimes />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">
+                      {student.roll_number}
+                    </div>
+                    <div className="text-gray-600">{student.name}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Badge
+                    variant={
+                      student.attendance_status === "Present"
+                        ? "success"
+                        : "destructive"
+                    }
+                  >
+                    {student.attendance_status}
+                  </Badge>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`p-2 ${
+                      student.attendance_status === "Present"
+                        ? "text-green-600 hover:bg-green-100"
+                        : "text-red-600 hover:bg-red-100"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleStatus(student.student_id);
+                    }}
+                  >
+                    <FaTimes />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-center">
+            <Button
+              onClick={handleSubmitStatus}
+              disabled={submitting || Object.keys(changedStatus).length === 0}
+              className="px-6"
+            >
+              {submitting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Submitting...
+                </>
+              ) : (
+                "Submit Attendance"
+              )}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {!loading && students.length === 0 && !error && (
+        <Card className="text-center">
+          <div className="text-gray-500">
+            <FaUser className="text-4xl mx-auto mb-4 text-gray-300" />
+            <p>No students found for this session.</p>
+          </div>
+        </Card>
+      )}
+    </DashboardLayout>
   );
 }

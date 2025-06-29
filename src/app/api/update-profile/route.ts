@@ -1,5 +1,12 @@
 import { students, teachers, users } from "@/db/schema";
 import { db } from "@/index";
+import {
+  badRequest,
+  getAuthenticatedUser,
+  serverError,
+  unauthorized,
+  validateFields,
+} from "@/utils/api-auth";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -10,10 +17,27 @@ function normalizeEmail(email: string | undefined | null) {
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    // Check authentication
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return unauthorized("Authentication required");
+    }
+
+    const body = await req.json();
+
+    // Validate required fields
+    const fieldError = validateFields(body, ["email"]);
+    if (fieldError) return badRequest(fieldError);
+
+    const { email } = body;
     const normalizedEmail = normalizeEmail(email);
 
-    // Check students and teachers for roleId and name (normalized email)
+    // Only allow users to update their own profile
+    if (user.email !== normalizedEmail) {
+      return unauthorized("Can only update your own profile");
+    }
+
+    // Check students and teachers for roleId and name
     const student = await db
       .select()
       .from(students)
@@ -45,9 +69,6 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Role assignment error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
-      { status: 500 },
-    );
+    return serverError("Failed to update profile");
   }
 }

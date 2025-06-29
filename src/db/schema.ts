@@ -113,16 +113,23 @@ export const accounts = pgTable("account", {
 
 // --- ERP Schema ---
 
-// Subjects Table
+// Subjects Table - Enhanced for comprehensive subject management
 export const subjects = pgTable("subjects", {
   id: uuid("id").defaultRandom().primaryKey(), // Changed from integer to uuid
-  year: integer("year").notNull(),
   semester: integer("semester").notNull(),
   course_code: varchar("course_code", { length: 10 }).notNull(),
   course_name: text("course_name").notNull(),
+  short_name: varchar("short_name", { length: 10 }), // Abbreviation like "CVDL", "DMW", etc.
   subject_type: subjectTypeEnum("subject_type").default("BS"), // Assuming 'BS' is a valid default from your list
   credits: integer("credits"),
+  theory_hours: integer("theory_hours").default(0),
+  lab_hours: integer("lab_hours").default(0),
+  tutorial_hours: integer("tutorial_hours").default(0),
+  // Semester and branch mapping
+
+  is_active: boolean("is_active").default(true),
   created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
 });
 
 // Groups Table
@@ -229,4 +236,87 @@ export const recurringClassSetups = pgTable("recurring_class_setups", {
   semester_end_date: date("semester_end_date").notNull(),
   created_at: timestamp("created_at").defaultNow(),
   // You might add an 'is_active' boolean or similar if setups can be disabled/archived
+});
+
+// Additional Enums for the new scheduling system based on Excel format
+export const branchEnum = pgEnum("branch_enum", [
+  "CSE",
+  "CSE-AIML",
+  "CSE-DS",
+  "CSE-HCIOT",
+  "ECE",
+  "ECE-IoT",
+]);
+
+export const sectionEnum = pgEnum("section_enum", ["A", "B", "C"]);
+
+export const roomTypeEnum = pgEnum("room_type_enum", ["Classroom", "Lab"]);
+
+export const semesterTypeEnum = pgEnum("semester_type_enum", ["odd", "even"]);
+
+export const dayEnum = pgEnum("day_enum", [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+]);
+
+export const timeSlotEnum = pgEnum("time_slot_enum", [
+  "8:00-8:55",
+  "9:00-9:55",
+  "10:00-10:55",
+  "11:00-11:55",
+  "12:00-12:55",
+  "13:00-13:55",
+  "14:00-14:55",
+  "15:00-15:55",
+  "16:00-16:55",
+  "17:00-17:55",
+]);
+
+// Rooms Master Table - All classrooms and labs with IDs
+export const rooms = pgTable("rooms", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  room_number: varchar("room_number", { length: 20 }).notNull().unique(), // CR-001, CR-101, etc.
+  room_type: roomTypeEnum("room_type").notNull(),
+  capacity: integer("capacity"),
+  floor: integer("floor"),
+  building: varchar("building", { length: 100 }),
+  facilities: text("facilities").array(), // ['Projector', 'AC', 'Whiteboard']
+  is_active: boolean("is_active").default(true),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// Central Timetable Table - Each cell gets a separate entry (total ~600 per semester)
+export const timetableEntries = pgTable("timetable_entries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  // Academic details
+  academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2024-25"
+  semester_type: semesterTypeEnum("semester_type").notNull(), // "odd" or "even"
+
+  // References with IDs
+  room_id: uuid("room_id")
+    .notNull()
+    .references(() => rooms.id, { onDelete: "cascade" }),
+  subject_id: uuid("subject_id").references(() => subjects.id, {
+    onDelete: "set null",
+  }), // Optional - can be empty slot
+
+  // Class details from enums
+  branch: branchEnum("branch"),
+  section: sectionEnum("section"),
+  day: dayEnum("day").notNull(),
+  time_slot: timeSlotEnum("time_slot").notNull(),
+
+  // Additional metadata
+  notes: text("notes"),
+  color_code: varchar("color_code", { length: 10 }), // For UI color coding
+
+  // System fields
+  created_by: uuid("created_by").references(() => users.id), // Editor who created
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
 });

@@ -51,7 +51,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -61,16 +61,19 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.picture = user.image;
         return token;
       }
-      // On subsequent jwt calls like new login or at updateAge
-      if (token?.email) {
+
+      // On manual session update or token refresh, fetch latest user data
+      if ((trigger === "update" || !token.role) && token?.email) {
         const dbUser = await getUserByEmail(token.email);
         if (dbUser) {
+          token.id = dbUser.id;
           token.name = dbUser.name || token.name;
-          token.role = dbUser.role ?? "student";
-          token.roleId = dbUser.roleId ?? "";
-          // Optionally can update other fields (name, image, etc.)
+          token.role = dbUser.role;
+          token.roleId = dbUser.roleId;
+          token.image = dbUser.image || token.picture;
         }
       }
+
       return token;
     },
     async session({ session, token }) {

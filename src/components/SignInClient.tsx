@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/hooks/useToast";
 import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -9,28 +10,35 @@ import { FaEnvelope, FaLock } from "react-icons/fa";
 export default function SignInClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   const { data: session, status } = useSession();
   const router = useRouter();
 
   // Role-based redirect after successful login
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role) {
+    if (status === "authenticated" && session?.user) {
+      // If either role OR roleId is missing/null/undefined, redirect to setup
+      if (!session.user.role || !session.user.roleId) {
+        router.replace("/dashboard/setup");
+        return;
+      }
+
+      // Redirect based on role
       switch (session.user.role) {
         case "teacher":
-          router.replace("/teacher/dashboard");
+          router.replace("/dashboard/teacher");
           break;
         case "student":
-          router.replace("/student/dashboard");
+          router.replace("/dashboard/student");
           break;
         case "admin":
-          router.replace("/admin/dashboard");
+          router.replace("/dashboard/admin");
           break;
         case "editor":
-          router.replace("/editor/dashboard");
+          router.replace("/dashboard/editor");
           break;
         default:
           router.replace("/unauthorized");
@@ -40,22 +48,25 @@ export default function SignInClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+
     const result = await signIn("credentials", {
       redirect: false,
       email,
       password,
     });
+
     setLoading(false);
+
     if (result?.error) {
-      setError(
+      showError(
         result.error === "CredentialsSignin"
           ? "Invalid email or password"
           : result.error,
       );
+    } else if (result?.ok) {
+      showSuccess("Login successful!");
     }
-    // No redirect here! Let useSession/useEffect handle routing by role.
   };
 
   const handleGoogleSignIn = async () => {
@@ -103,7 +114,6 @@ export default function SignInClient() {
                 disabled={isDisabled}
               />
             </div>
-            {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
             <button
               type="submit"
               disabled={isDisabled}

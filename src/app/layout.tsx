@@ -1,3 +1,4 @@
+import { ToastProvider } from "@/hooks/useToast";
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Inter, Manrope, Poppins } from "next/font/google";
@@ -44,7 +45,9 @@ export default function RootLayout({
       <body
         className={`${funnel.variable} ${poppins.variable} ${inter.variable} ${manrope.variable} antialiased`}
       >
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );
