@@ -1,18 +1,20 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import { classStudents, teacherClasses, teachers } from "@/db/schema";
+import { classStudents, classTeachers, teachers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { classId: string; studentId: string } },
+  { params }: { params: Promise<{ classId: string; studentId: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const resolvedParams = await params;
 
     // Get teacher ID from email
     const teacher = await db
@@ -28,8 +30,8 @@ export async function DELETE(
     // Verify the class belongs to the current teacher
     const teacherClass = await db
       .select()
-      .from(teacherClasses)
-      .where(eq(teacherClasses.id, params.classId))
+      .from(classTeachers)
+      .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
     if (
@@ -45,7 +47,7 @@ export async function DELETE(
     // Remove the student from the class
     const deletedRecord = await db
       .delete(classStudents)
-      .where(eq(classStudents.id, params.studentId))
+      .where(eq(classStudents.id, resolvedParams.studentId))
       .returning();
 
     if (deletedRecord.length === 0) {

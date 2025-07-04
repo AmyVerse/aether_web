@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
 import {
   classSessions,
+  classTeachers,
   subjects,
-  teacherClasses,
   timetableEntries,
 } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -22,23 +22,23 @@ async function SessionList({ classId }: { classId: string }) {
   // Verify class exists and get class info with subject details
   const classInfo = await db
     .select({
-      id: teacherClasses.id,
-      teacher_id: teacherClasses.teacher_id,
-      timetable_entry_id: teacherClasses.timetable_entry_id,
-      assigned_at: teacherClasses.assigned_at,
-      is_active: teacherClasses.is_active,
-      notes: teacherClasses.notes,
+      id: classTeachers.id,
+      teacher_id: classTeachers.teacher_id,
+      timetable_entry_id: classTeachers.timetable_entry_id,
+      assigned_at: classTeachers.assigned_at,
+      is_active: classTeachers.is_active,
+      notes: classTeachers.notes,
       subject_name: subjects.course_name,
       subject_code: subjects.course_code,
       short_name: subjects.short_name,
     })
-    .from(teacherClasses)
+    .from(classTeachers)
     .leftJoin(
       timetableEntries,
-      eq(teacherClasses.timetable_entry_id, timetableEntries.id),
+      eq(classTeachers.timetable_entry_id, timetableEntries.id),
     )
     .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
-    .where(eq(teacherClasses.id, classId))
+    .where(eq(classTeachers.id, classId))
     .limit(1);
 
   if (classInfo.length === 0) {

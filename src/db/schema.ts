@@ -175,7 +175,7 @@ export const classSessions = pgTable("class_sessions", {
   id: varchar("id", { length: 9 }).primaryKey(),
   teacher_class_id: varchar("teacher_class_id", { length: 9 })
     .notNull()
-    .references(() => teacherClasses.id, { onDelete: "cascade" }),
+    .references(() => classTeachers.id, { onDelete: "cascade" }),
   date: date("date").notNull(),
   start_time: time("start_time").notNull(),
   end_time: time("end_time"),
@@ -291,7 +291,7 @@ export const timetableEntries = pgTable("timetable_entries", {
 });
 
 // Teacher Classes Table - Links teachers to their assigned timetable entries
-export const teacherClasses = pgTable("teacher_classes", {
+export const classTeachers = pgTable("class_teachers", {
   id: varchar("id", { length: 9 }).primaryKey(),
   teacher_id: uuid("teacher_id")
     .notNull()
@@ -309,7 +309,7 @@ export const classStudents = pgTable("class_students", {
   id: uuid("id").defaultRandom().primaryKey(),
   teacher_class_id: varchar("teacher_class_id", { length: 9 })
     .notNull()
-    .references(() => teacherClasses.id, { onDelete: "cascade" }),
+    .references(() => classTeachers.id, { onDelete: "cascade" }),
   student_id: uuid("student_id")
     .notNull()
     .references(() => students.id, { onDelete: "cascade" }),

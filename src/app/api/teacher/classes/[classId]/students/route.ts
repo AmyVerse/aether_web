@@ -1,18 +1,20 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import { classStudents, students, teacherClasses, teachers } from "@/db/schema";
+import { classStudents, classTeachers, students, teachers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { classId: string } },
+  { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const resolvedParams = await params;
 
     // Get teacher ID from email
     const teacher = await db
@@ -28,8 +30,8 @@ export async function GET(
     // Verify the class belongs to the current teacher
     const teacherClass = await db
       .select()
-      .from(teacherClasses)
-      .where(eq(teacherClasses.id, params.classId))
+      .from(classTeachers)
+      .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
     if (
@@ -59,7 +61,7 @@ export async function GET(
       })
       .from(classStudents)
       .innerJoin(students, eq(classStudents.student_id, students.id))
-      .where(eq(classStudents.teacher_class_id, params.classId));
+      .where(eq(classStudents.teacher_class_id, resolvedParams.classId));
 
     return NextResponse.json({
       success: true,
@@ -76,13 +78,15 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { classId: string } },
+  { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const resolvedParams = await params;
 
     // Get teacher ID from email
     const teacher = await db
@@ -98,8 +102,8 @@ export async function POST(
     // Verify the class belongs to the current teacher
     const teacherClass = await db
       .select()
-      .from(teacherClasses)
-      .where(eq(teacherClasses.id, params.classId))
+      .from(classTeachers)
+      .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
     if (
@@ -130,7 +134,7 @@ export async function POST(
       .insert(classStudents)
       .values(
         student_ids.map((studentId: string) => ({
-          teacher_class_id: params.classId,
+          teacher_class_id: resolvedParams.classId,
           student_id: studentId,
           is_active: true,
         })),

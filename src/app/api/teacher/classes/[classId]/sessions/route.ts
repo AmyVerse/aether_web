@@ -1,23 +1,22 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import {
-  classSessions,
-  teacherClasses,
-  teachers,
-} from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { classSessions, classTeachers, teachers } from "@/db/schema";
+import { authenticateTeacher } from "@/utils/auth-helpers";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { classId: string } }
+  { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const resolvedParams = await params;
 
     // Get teacher ID from email
     const teacher = await db
@@ -33,12 +32,18 @@ export async function POST(
     // Verify the class belongs to the current teacher
     const teacherClass = await db
       .select()
-      .from(teacherClasses)
-      .where(eq(teacherClasses.id, params.classId))
+      .from(classTeachers)
+      .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
-    if (teacherClass.length === 0 || teacherClass[0].teacher_id !== teacher[0].id) {
-      return NextResponse.json({ error: "Class not found or unauthorized" }, { status: 403 });
+    if (
+      teacherClass.length === 0 ||
+      teacherClass[0].teacher_id !== teacher[0].id
+    ) {
+      return NextResponse.json(
+        { error: "Class not found or unauthorized" },
+        { status: 403 },
+      );
     }
 
     const { date, start_time, end_time, notes } = await request.json();
@@ -58,7 +63,7 @@ export async function POST(
       .insert(classSessions)
       .values({
         id: sessionId,
-        teacher_class_id: params.classId,
+        teacher_class_id: resolvedParams.classId,
         date,
         start_time,
         end_time: end_time || null,
@@ -82,41 +87,37 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { classId: string } }
+  { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { teacher, error } = await authenticateTeacher();
+    if (error) return error;
 
-    // Get teacher ID from email
-    const teacher = await db
-      .select()
-      .from(teachers)
-      .where(eq(teachers.email, session.user.email))
-      .limit(1);
+    const resolvedParams = await params;
 
-    if (teacher.length === 0) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
-    }
-
-    // Verify the class belongs to the current teacher
-    const teacherClass = await db
-      .select()
-      .from(teacherClasses)
-      .where(eq(teacherClasses.id, params.classId))
-      .limit(1);
-
-    if (teacherClass.length === 0 || teacherClass[0].teacher_id !== teacher[0].id) {
-      return NextResponse.json({ error: "Class not found or unauthorized" }, { status: 403 });
-    }
-
-    // Get all sessions for this class
+    // Get sessions with authorization check in a single query
     const sessions = await db
-      .select()
+      .select({
+        id: classSessions.id,
+        teacher_class_id: classSessions.teacher_class_id,
+        date: classSessions.date,
+        start_time: classSessions.start_time,
+        end_time: classSessions.end_time,
+        status: classSessions.status,
+        notes: classSessions.notes,
+        created_at: classSessions.created_at,
+      })
       .from(classSessions)
-      .where(eq(classSessions.teacher_class_id, params.classId))
+      .innerJoin(
+        classTeachers,
+        eq(classSessions.teacher_class_id, classTeachers.id),
+      )
+      .where(
+        and(
+          eq(classSessions.teacher_class_id, resolvedParams.classId),
+          eq(classTeachers.teacher_id, teacher.id),
+        ),
+      )
       .orderBy(classSessions.date, classSessions.start_time);
 
     return NextResponse.json({

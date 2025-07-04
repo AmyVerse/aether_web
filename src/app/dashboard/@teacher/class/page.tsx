@@ -1,5 +1,5 @@
 import MyClasses from "@/components/teacher/my-classes";
 
-export default function TeacherClassesPage() {
+export default function classTeachersPage() {
   return <MyClasses fullView={true} />;
 }

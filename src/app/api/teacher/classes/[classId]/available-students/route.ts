@@ -1,18 +1,20 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import { classStudents, students, teacherClasses, teachers } from "@/db/schema";
+import { classStudents, classTeachers, students, teachers } from "@/db/schema";
 import { eq, notInArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { classId: string } },
+  { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const resolvedParams = await params;
 
     // Get teacher ID from email
     const teacher = await db
@@ -28,8 +30,8 @@ export async function GET(
     // Verify the class belongs to the current teacher
     const teacherClass = await db
       .select()
-      .from(teacherClasses)
-      .where(eq(teacherClasses.id, params.classId))
+      .from(classTeachers)
+      .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
     if (
@@ -48,7 +50,7 @@ export async function GET(
         student_id: classStudents.student_id,
       })
       .from(classStudents)
-      .where(eq(classStudents.teacher_class_id, params.classId));
+      .where(eq(classStudents.teacher_class_id, resolvedParams.classId));
 
     const enrolledStudentIds = enrolledStudents.map((s) => s.student_id);
 

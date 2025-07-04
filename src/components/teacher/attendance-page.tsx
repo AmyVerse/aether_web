@@ -18,26 +18,30 @@ import {
 
 interface SessionDetails {
   id: string;
+  teacher_class_id: string;
   date: string;
   start_time: string;
   end_time?: string;
   status: string;
   notes?: string;
-  class_details: {
-    subject_name: string;
-    subject_code: string;
-    branch: string;
-    section: string;
-  };
 }
 
-interface StudentAttendance {
-  student_id: string;
-  student_name: string;
+interface Student {
+  id: string;
+  name: string;
   roll_number: string;
   email: string;
-  attendance_status: "Present" | "Absent" | "Leave";
+}
+
+interface Attendance {
+  id?: string;
+  status: "Present" | "Absent" | "Leave";
   recorded_at?: string;
+}
+
+interface StudentWithAttendance {
+  student: Student;
+  attendance: Attendance;
   hasChanged?: boolean;
 }
 
@@ -49,7 +53,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(
     null,
   );
-  const [students, setStudents] = useState<StudentAttendance[]>([]);
+  const [students, setStudents] = useState<StudentWithAttendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoSaving, setAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -57,8 +61,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   const router = useRouter();
 
   useEffect(() => {
-    fetchSessionDetails();
-    fetchStudents();
+    fetchStudentsAndSession();
   }, [sessionId]);
 
   // Auto-save every 30 seconds if there are changes
@@ -73,22 +76,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
     }
   }, [students]);
 
-  const fetchSessionDetails = async () => {
-    try {
-      const response = await fetch(`/api/teacher/sessions/${sessionId}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setSessionDetails(data.session);
-      } else {
-        showError("Failed to fetch session details");
-      }
-    } catch (error) {
-      showError("An error occurred while fetching session details");
-    }
-  };
-
-  const fetchStudents = async () => {
+  const fetchStudentsAndSession = async () => {
     try {
       const response = await fetch(
         `/api/teacher/sessions/${sessionId}/students`,
@@ -96,17 +84,19 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
       const data = await response.json();
 
       if (data.success) {
+        setSessionDetails(data.data.session);
         setStudents(
-          data.students.map((student: StudentAttendance) => ({
-            ...student,
+          data.data.students.map((studentData: any) => ({
+            student: studentData.student,
+            attendance: studentData.attendance,
             hasChanged: false,
           })),
         );
       } else {
-        showError("Failed to fetch students");
+        showError("Failed to fetch session details");
       }
     } catch (error) {
-      showError("An error occurred while fetching students");
+      showError("An error occurred while fetching session details");
     } finally {
       setLoading(false);
     }
@@ -117,32 +107,40 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
     status: "Present" | "Absent" | "Leave",
   ) => {
     setStudents((prev) =>
-      prev.map((student) =>
-        student.student_id === studentId
-          ? { ...student, attendance_status: status, hasChanged: true }
-          : student,
+      prev.map((studentData) =>
+        studentData.student.id === studentId
+          ? {
+              ...studentData,
+              attendance: { ...studentData.attendance, status },
+              hasChanged: true,
+            }
+          : studentData,
       ),
     );
   };
 
   const toggleAttendance = (studentId: string) => {
     setStudents((prev) =>
-      prev.map((student) => {
-        if (student.student_id === studentId) {
+      prev.map((studentData) => {
+        if (studentData.student.id === studentId) {
           const newStatus =
-            student.attendance_status === "Present" ? "Absent" : "Present";
-          return { ...student, attendance_status: newStatus, hasChanged: true };
+            studentData.attendance.status === "Present" ? "Absent" : "Present";
+          return {
+            ...studentData,
+            attendance: { ...studentData.attendance, status: newStatus },
+            hasChanged: true,
+          };
         }
-        return student;
+        return studentData;
       }),
     );
   };
 
   const markAllPresent = () => {
     setStudents((prev) =>
-      prev.map((student) => ({
-        ...student,
-        attendance_status: "Present" as const,
+      prev.map((studentData) => ({
+        ...studentData,
+        attendance: { ...studentData.attendance, status: "Present" as const },
         hasChanged: true,
       })),
     );
@@ -150,9 +148,9 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
 
   const markAllAbsent = () => {
     setStudents((prev) =>
-      prev.map((student) => ({
-        ...student,
-        attendance_status: "Absent" as const,
+      prev.map((studentData) => ({
+        ...studentData,
+        attendance: { ...studentData.attendance, status: "Absent" as const },
         hasChanged: true,
       })),
     );
@@ -164,20 +162,28 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
 
     setAutoSaving(true);
     try {
-      const response = await fetch(`/api/attendance/${sessionId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          attendance: students.map((s) => ({
-            student_id: s.student_id,
-            attendance_status: s.attendance_status,
-          })),
-        }),
+      // Save each changed student individually using the new API
+      const promises = changedStudents.map(async (studentData) => {
+        const response = await fetch(
+          `/api/teacher/sessions/${sessionId}/students`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              student_id: studentData.student.id,
+              attendance_status: studentData.attendance.status,
+            }),
+          },
+        );
+        return response;
       });
 
-      if (response.ok) {
+      const responses = await Promise.all(promises);
+      const allSuccessful = responses.every((response) => response.ok);
+
+      if (allSuccessful) {
         setStudents((prev) =>
-          prev.map((student) => ({ ...student, hasChanged: false })),
+          prev.map((studentData) => ({ ...studentData, hasChanged: false })),
         );
         setLastSaved(new Date());
       }
@@ -191,27 +197,34 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   const saveAttendance = async () => {
     setAutoSaving(true);
     try {
-      const response = await fetch(`/api/attendance/${sessionId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          attendance: students.map((s) => ({
-            student_id: s.student_id,
-            attendance_status: s.attendance_status,
-          })),
-        }),
+      // Save each student individually using the new API
+      const promises = students.map(async (studentData) => {
+        const response = await fetch(
+          `/api/teacher/sessions/${sessionId}/students`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              student_id: studentData.student.id,
+              attendance_status: studentData.attendance.status,
+            }),
+          },
+        );
+        return response;
       });
 
-      if (response.ok) {
+      const responses = await Promise.all(promises);
+      const allSuccessful = responses.every((response) => response.ok);
+
+      if (allSuccessful) {
         showSuccess("Attendance saved successfully!");
         setStudents((prev) =>
-          prev.map((student) => ({ ...student, hasChanged: false })),
+          prev.map((studentData) => ({ ...studentData, hasChanged: false })),
         );
         setLastSaved(new Date());
-        fetchStudents(); // Refresh to get recorded_at timestamps
+        fetchStudentsAndSession(); // Refresh to get recorded_at timestamps
       } else {
-        const error = await response.json();
-        showError(error.error || "Failed to save attendance");
+        showError("Failed to save some attendance records");
       }
     } catch (error) {
       showError("An error occurred while saving attendance");
@@ -250,13 +263,13 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   }
 
   const presentCount = students.filter(
-    (s) => s.attendance_status === "Present",
+    (s) => s.attendance.status === "Present",
   ).length;
   const absentCount = students.filter(
-    (s) => s.attendance_status === "Absent",
+    (s) => s.attendance.status === "Absent",
   ).length;
   const leaveCount = students.filter(
-    (s) => s.attendance_status === "Leave",
+    (s) => s.attendance.status === "Leave",
   ).length;
   const hasChanges = students.some((s) => s.hasChanged);
 
@@ -273,13 +286,9 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {sessionDetails.class_details.subject_name}
+                  Session Attendance
                 </h1>
-                <p className="text-gray-600">
-                  {sessionDetails.class_details.subject_code} •{" "}
-                  {sessionDetails.class_details.branch} - Section{" "}
-                  {sessionDetails.class_details.section}
-                </p>
+                <p className="text-gray-600">Session ID: {sessionId}</p>
               </div>
             </div>
             <div className="text-right">
@@ -389,25 +398,25 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {students.map((student) => (
+            {students.map((studentData) => (
               <div
-                key={student.student_id}
-                onClick={() => toggleAttendance(student.student_id)}
+                key={studentData.student.id}
+                onClick={() => toggleAttendance(studentData.student.id)}
                 className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                  student.attendance_status === "Present"
+                  studentData.attendance.status === "Present"
                     ? "border-green-500 bg-green-50 hover:bg-green-100"
                     : "border-red-500 bg-red-50 hover:bg-red-100"
-                } ${student.hasChanged ? "ring-2 ring-orange-300" : ""}`}
+                } ${studentData.hasChanged ? "ring-2 ring-orange-300" : ""}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      student.attendance_status === "Present"
+                      studentData.attendance.status === "Present"
                         ? "bg-green-100"
                         : "bg-red-100"
                     }`}
                   >
-                    {student.attendance_status === "Present" ? (
+                    {studentData.attendance.status === "Present" ? (
                       <FaCheck className="text-green-600" />
                     ) : (
                       <FaTimes className="text-red-600" />
@@ -415,27 +424,31 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                   </div>
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.attendance_status === "Present"
+                      studentData.attendance.status === "Present"
                         ? "bg-green-100 text-green-800"
                         : "bg-red-100 text-red-800"
                     }`}
                   >
-                    {student.attendance_status}
+                    {studentData.attendance.status}
                   </span>
                 </div>
 
                 <div>
                   <p className="font-medium text-gray-900 mb-1">
-                    {student.student_name}
+                    {studentData.student.name}
                   </p>
                   <p className="text-sm text-gray-500 mb-1">
-                    {student.roll_number}
+                    {studentData.student.roll_number}
                   </p>
-                  <p className="text-xs text-gray-400">{student.email}</p>
-                  {student.recorded_at && (
+                  <p className="text-xs text-gray-400">
+                    {studentData.student.email}
+                  </p>
+                  {studentData.attendance.recorded_at && (
                     <p className="text-xs text-gray-400 mt-2">
                       Recorded:{" "}
-                      {new Date(student.recorded_at).toLocaleTimeString()}
+                      {new Date(
+                        studentData.attendance.recorded_at,
+                      ).toLocaleTimeString()}
                     </p>
                   )}
                 </div>
@@ -445,10 +458,10 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      updateAttendance(student.student_id, "Present");
+                      updateAttendance(studentData.student.id, "Present");
                     }}
                     className={`flex-1 py-1 px-2 text-xs rounded ${
-                      student.attendance_status === "Present"
+                      studentData.attendance.status === "Present"
                         ? "bg-green-600 text-white"
                         : "bg-gray-200 text-gray-600 hover:bg-green-100"
                     }`}
@@ -458,10 +471,10 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      updateAttendance(student.student_id, "Absent");
+                      updateAttendance(studentData.student.id, "Absent");
                     }}
                     className={`flex-1 py-1 px-2 text-xs rounded ${
-                      student.attendance_status === "Absent"
+                      studentData.attendance.status === "Absent"
                         ? "bg-red-600 text-white"
                         : "bg-gray-200 text-gray-600 hover:bg-red-100"
                     }`}
@@ -471,10 +484,10 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      updateAttendance(student.student_id, "Leave");
+                      updateAttendance(studentData.student.id, "Leave");
                     }}
                     className={`flex-1 py-1 px-2 text-xs rounded ${
-                      student.attendance_status === "Leave"
+                      studentData.attendance.status === "Leave"
                         ? "bg-orange-600 text-white"
                         : "bg-gray-200 text-gray-600 hover:bg-orange-100"
                     }`}

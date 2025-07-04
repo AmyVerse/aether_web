@@ -107,10 +107,10 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
 
   // Fetch teacher's classes from API
   useEffect(() => {
-    fetchTeacherClasses();
+    fetchclassTeachers();
   }, []);
 
-  const fetchTeacherClasses = async () => {
+  const fetchclassTeachers = async () => {
     try {
       setLoading(true);
       const response = await fetch("/api/teacher/classes");
@@ -130,7 +130,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
 
   const handleClassAdded = () => {
     // Refresh the classes list after adding a new class
-    fetchTeacherClasses();
+    fetchclassTeachers();
   };
 
   const handleViewDetails = (classId: string) => {
@@ -143,8 +143,33 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     }
   };
 
-  const handleCreateSession = (classId: string) => {
-    window.location.href = `/dashboard/class/${classId}/session?action=create`;
+  const handleCreateSession = async (classId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    const currentTime = new Date().toTimeString().split(" ")[0].substring(0, 5);
+
+    try {
+      const response = await fetch(`/api/teacher/classes/${classId}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: today,
+          start_time: currentTime,
+          notes: "Session created from classes overview",
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showError("Session created successfully!");
+        // Redirect to attendance page
+        window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
+      } else {
+        const error = await response.json();
+        showError(error.error || "Failed to create session");
+      }
+    } catch (error) {
+      showError("An error occurred while creating session");
+    }
   };
 
   // If a class is selected, show the detail view

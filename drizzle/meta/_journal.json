@@ -85,6 +85,13 @@
       "when": 1751572513265,
       "tag": "0011_odd_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1751602410127,
+      "tag": "0012_open_rick_jones",
+      "breakpoints": true
     }
   ]
 }
