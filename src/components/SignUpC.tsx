@@ -19,8 +19,12 @@ export default function SignUpClient({
   const [resendTimer, setResendTimer] = useState(0);
   const { showSuccess, showError } = useToast();
 
-  // Password validation: only check for 6+ characters
-  const isPasswordValid = password.length >= 6;
+  // Password validation: 8+ characters, 1 uppercase, 1 lowercase, 1 number
+  const isPasswordValid =
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /\d/.test(password);
 
   // --- API Calls ---
   // Step 0: Email check, then send OTP if email is valid
@@ -286,7 +290,7 @@ export default function SignUpClient({
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoFocus
-                  minLength={6}
+                  minLength={8}
                   disabled={loading}
                 />
                 <button
@@ -311,12 +315,13 @@ export default function SignUpClient({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={loading}
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
-              {password && !confirmPassword && !isPasswordValid && (
+              {password && !isPasswordValid && (
                 <div className="text-red-500 justify-start relative text-sm mb-4">
-                  Password must be at least 6 characters.
+                  Password must be at least 8 characters, include one uppercase
+                  letter, one lowercase letter, and one number.
                 </div>
               )}
               {password && confirmPassword && password !== confirmPassword && (

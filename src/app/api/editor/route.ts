@@ -36,7 +36,7 @@ const excelImportSchema = z.object({
         .enum(["CSE", "CSE-AIML", "CSE-DS", "CSE-HCIOT", "ECE", "ECE-IoT"])
         .optional(),
       section: z.enum(["A", "B", "C"]).optional(),
-      subject_code: z.string().optional(),
+      subject_code: z.string().optional(), // This will be mapped to course_code in DB
       color_code: z.string().optional(),
       notes: z.string().optional(),
     }),
@@ -144,8 +144,8 @@ export async function GET(req: NextRequest) {
             room_number: rooms.room_number,
             room_type: rooms.room_type,
             subject_id: timetableEntries.subject_id,
-            subject_code: subjects.subject_code,
-            subject_name: subjects.subject_name,
+            course_code: subjects.course_code,
+            course_name: subjects.course_name,
             day: timetableEntries.day,
             time_slot: timetableEntries.time_slot,
             branch: timetableEntries.branch,
@@ -161,6 +161,61 @@ export async function GET(req: NextRequest) {
           .where(whereConditions);
 
         return NextResponse.json({ timetable: timetableData });
+
+      case "export-timetable":
+        const exportAcademicYear = searchParams.get("academic_year");
+        const exportSemesterType = searchParams.get("semester_type") as
+          | "odd"
+          | "even";
+        const exportRoomId = searchParams.get("room_id");
+
+        if (!exportAcademicYear || !exportSemesterType) {
+          return NextResponse.json(
+            { error: "Missing academic_year or semester_type" },
+            { status: 400 },
+          );
+        }
+
+        let exportWhereConditions = and(
+          eq(timetableEntries.academic_year, exportAcademicYear),
+          eq(timetableEntries.semester_type, exportSemesterType),
+        );
+
+        if (exportRoomId) {
+          exportWhereConditions = and(
+            exportWhereConditions,
+            eq(timetableEntries.room_id, exportRoomId),
+          );
+        }
+
+        const exportTimetableData = await db
+          .select({
+            id: timetableEntries.id,
+            room_id: timetableEntries.room_id,
+            room_number: rooms.room_number,
+            room_type: rooms.room_type,
+            subject_id: timetableEntries.subject_id,
+            course_code: subjects.course_code,
+            course_name: subjects.course_name,
+            day: timetableEntries.day,
+            time_slot: timetableEntries.time_slot,
+            branch: timetableEntries.branch,
+            section: timetableEntries.section,
+            color_code: timetableEntries.color_code,
+            notes: timetableEntries.notes,
+            academic_year: timetableEntries.academic_year,
+            semester_type: timetableEntries.semester_type,
+          })
+          .from(timetableEntries)
+          .leftJoin(rooms, eq(timetableEntries.room_id, rooms.id))
+          .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
+          .where(exportWhereConditions);
+
+        return NextResponse.json({
+          timetable: exportTimetableData,
+          success: true,
+          message: "Timetable data ready for export",
+        });
 
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -224,13 +279,13 @@ export async function POST(req: NextRequest) {
               room = newRoom;
             }
 
-            // Find subject if subject_code is provided
+            // Find subject if subject_code is provided (maps to course_code in DB)
             let subject_id = null;
             if (entry.subject_code) {
               const subject = await db
                 .select()
                 .from(subjects)
-                .where(eq(subjects.subject_code, entry.subject_code))
+                .where(eq(subjects.course_code, entry.subject_code))
                 .limit(1);
 
               if (subject.length > 0) {
@@ -296,6 +351,59 @@ export async function POST(req: NextRequest) {
           .where(eq(timetableEntries.id, entryId));
 
         return NextResponse.json({ success: true });
+
+      case "create-timetable-entry":
+        const newEntryData = z
+          .object({
+            room_id: z.string().uuid(),
+            subject_id: z.string().uuid().optional(),
+            academic_year: z.string(),
+            semester_type: z.enum(["odd", "even"]),
+            branch: z
+              .enum([
+                "CSE",
+                "CSE-AIML",
+                "CSE-DS",
+                "CSE-HCIOT",
+                "ECE",
+                "ECE-IoT",
+              ])
+              .optional(),
+            section: z.enum(["A", "B", "C"]).optional(),
+            day: z.enum([
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ]),
+            time_slot: z.enum([
+              "8:00-8:55",
+              "9:00-9:55",
+              "10:00-10:55",
+              "11:00-11:55",
+              "12:00-12:55",
+              "13:00-13:55",
+              "14:00-14:55",
+              "15:00-15:55",
+              "16:00-16:55",
+              "17:00-17:55",
+            ]),
+            color_code: z.string().optional(),
+            notes: z.string().optional(),
+          })
+          .parse(body.data);
+
+        const createdEntry = await db
+          .insert(timetableEntries)
+          .values({
+            ...newEntryData,
+            created_by: session.user.id,
+          })
+          .returning();
+
+        return NextResponse.json({ entry: createdEntry[0] });
 
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });

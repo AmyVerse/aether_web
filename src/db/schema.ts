@@ -115,8 +115,7 @@ export const accounts = pgTable("account", {
 
 // Subjects Table - Enhanced for comprehensive subject management
 export const subjects = pgTable("subjects", {
-  id: uuid("id").defaultRandom().primaryKey(), // Changed from integer to uuid
-  semester: integer("semester").notNull(),
+  id: uuid("id").defaultRandom().primaryKey(),
   course_code: varchar("course_code", { length: 10 }).notNull(),
   course_name: text("course_name").notNull(),
   short_name: varchar("short_name", { length: 10 }), // Abbreviation like "CVDL", "DMW", etc.
@@ -174,34 +173,26 @@ export const students = pgTable("students", {
 // Class Sessions Table
 export const classSessions = pgTable("class_sessions", {
   id: varchar("id", { length: 9 }).primaryKey(),
-  subject_id: uuid("subject_id")
+  teacher_class_id: varchar("teacher_class_id", { length: 9 })
     .notNull()
-    .references(() => subjects.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-  teacher_id: uuid("teacher_id")
-    .notNull()
-    .references(() => teachers.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }), // Or 'restrict' if a session must always have a teacher
-  group_id: uuid("group_id")
-    .notNull()
-    .references(() => groups.id, { onDelete: "cascade", onUpdate: "cascade" }),
-  type: classSessionTypeEnum("type"), // Nullable as per your original SQL for class_sessions.type
+    .references(() => teacherClasses.id, { onDelete: "cascade" }),
   date: date("date").notNull(),
   start_time: time("start_time").notNull(),
   end_time: time("end_time"),
-  status: classSessionStatusEnum("status").notNull(),
-  reason: text("reason"), // For cancellation or rescheduling
+  status: classSessionStatusEnum("status").notNull().default("Scheduled"),
+  notes: text("notes"),
+  created_at: timestamp("created_at").defaultNow(),
 });
 
 // Attendance Records Table
 export const attendanceRecords = pgTable("attendance_record", {
   id: uuid("id").defaultRandom().primaryKey(),
-  student_id: uuid("student_id").unique(),
-  session_id: varchar("session_id", { length: 9 }).unique(),
+  student_id: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  session_id: varchar("session_id", { length: 9 })
+    .notNull()
+    .references(() => classSessions.id, { onDelete: "cascade" }),
   attendance_status: attendanceStatusEnum("attendance_status")
     .notNull()
     .default("Present"),
@@ -214,28 +205,6 @@ export const holidays = pgTable("holiday", {
   date: date("date").notNull(),
   description: text("description"),
   type: holidayTypeEnum("type").notNull(),
-});
-
-export const recurringClassSetups = pgTable("recurring_class_setups", {
-  id: uuid("id").defaultRandom().primaryKey(), // Use defaultRandom for UUID primary key
-  teacher_id: uuid("teacher_id")
-    .notNull()
-    .references(() => teachers.id),
-  subject_id: uuid("subject_id")
-    .notNull()
-    .references(() => subjects.id),
-  group_id: uuid("group_id")
-    .notNull()
-    .references(() => groups.id),
-  // days_of_week: 0=Sunday, 1=Monday, ..., 6=Saturday (aligns with JavaScript's getDay())
-  days_of_week: integer("days_of_week").array().notNull(), // e.g., [1, 3, 5] for Mon, Wed, Fri
-  start_time: time("start_time").notNull(), // e.g., '10:00:00'
-  end_time: time("end_time"), // e.g., '11:00:00'
-  session_type: classSessionTypeEnum("type"), // From your existing enum
-  semester_start_date: date("semester_start_date").notNull(),
-  semester_end_date: date("semester_end_date").notNull(),
-  created_at: timestamp("created_at").defaultNow(),
-  // You might add an 'is_active' boolean or similar if setups can be disabled/archived
 });
 
 // Additional Enums for the new scheduling system based on Excel format
@@ -319,4 +288,32 @@ export const timetableEntries = pgTable("timetable_entries", {
   created_by: uuid("created_by").references(() => users.id), // Editor who created
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// Teacher Classes Table - Links teachers to their assigned timetable entries
+export const teacherClasses = pgTable("teacher_classes", {
+  id: varchar("id", { length: 9 }).primaryKey(),
+  teacher_id: uuid("teacher_id")
+    .notNull()
+    .references(() => teachers.id, { onDelete: "cascade" }),
+  timetable_entry_id: uuid("timetable_entry_id")
+    .notNull()
+    .references(() => timetableEntries.id, { onDelete: "cascade" }),
+  assigned_at: timestamp("assigned_at").defaultNow(),
+  is_active: boolean("is_active").default(true),
+  notes: text("notes"), // Teacher-specific notes for this class
+});
+
+// Class Students Table - Maps students to teacher classes
+export const classStudents = pgTable("class_students", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  teacher_class_id: varchar("teacher_class_id", { length: 9 })
+    .notNull()
+    .references(() => teacherClasses.id, { onDelete: "cascade" }),
+  student_id: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  enrolled_at: timestamp("enrolled_at").defaultNow(),
+  is_active: boolean("is_active").default(true),
+  notes: text("notes"), // Additional notes about this student's enrollment
 });

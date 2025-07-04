@@ -17,32 +17,11 @@ export default function SignInClient() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Role-based redirect after successful login
+  // Redirect to dashboard after successful login
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      // If either role OR roleId is missing/null/undefined, redirect to setup
-      if (!session.user.role || !session.user.roleId) {
-        router.replace("/dashboard/setup");
-        return;
-      }
-
-      // Redirect based on role
-      switch (session.user.role) {
-        case "teacher":
-          router.replace("/dashboard/teacher");
-          break;
-        case "student":
-          router.replace("/dashboard/student");
-          break;
-        case "admin":
-          router.replace("/dashboard/admin");
-          break;
-        case "editor":
-          router.replace("/dashboard/editor");
-          break;
-        default:
-          router.replace("/unauthorized");
-      }
+      // Always redirect to /dashboard - the layout will handle role-based rendering
+      router.replace("/dashboard");
     }
   }, [status, session, router]);
 

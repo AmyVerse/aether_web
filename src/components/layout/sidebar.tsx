@@ -36,40 +36,40 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const sidebarItems: SidebarItem[] = [
     {
       label: "Dashboard",
-      href: `/dashboard/${userRole}`,
+      href: `/dashboard`,
       icon: <FaThLarge />,
     },
     {
       label: "Schedule",
-      href: `/dashboard/${userRole}/schedule`,
+      href: `/dashboard#schedule`,
       icon: <FaRegCalendarAlt />,
     },
     {
       label: "Messages",
-      href: `/dashboard/${userRole}/messages`,
+      href: `/dashboard#messages`,
       icon: <FaRegEnvelope />,
     },
     {
       label: "Students",
-      href: `/dashboard/${userRole}/students`,
+      href: `/dashboard#students`,
       icon: <FaRegUser />,
       roles: ["teacher", "admin"],
     },
     {
       label: "Classes",
-      href: `/dashboard/${userRole}/classes`,
+      href: `/dashboard#classes`,
       icon: <FaRegUser />,
       roles: ["student"],
     },
     {
       label: "Reports",
-      href: `/dashboard/${userRole}/reports`,
+      href: `/dashboard#reports`,
       icon: <FaRegChartBar />,
       roles: ["teacher", "admin"],
     },
     {
       label: "Settings",
-      href: `/dashboard/${userRole}/settings`,
+      href: `/dashboard#settings`,
       icon: <FaCog />,
     },
   ];
@@ -112,7 +112,9 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
         <nav className="space-y-2">
           {filteredItems.map((item) => {
-            const isActive = pathname === item.href;
+            // For dashboard navigation, the main dashboard path should be active for all
+            const isActive =
+              pathname === "/dashboard" && item.href.startsWith("/dashboard");
             return (
               <Link key={item.label} href={item.href} onClick={onClose}>
                 <button

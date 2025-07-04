@@ -52,7 +52,9 @@ export async function POST(req: Request) {
       );
     }
 
+    // Send OTP via email
     const { data } = await sendOtp(email);
+
     return NextResponse.json(
       { message: "OTP sent successfully", data },
       { status: 200 },
