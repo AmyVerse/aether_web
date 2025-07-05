@@ -212,7 +212,7 @@ export const branchEnum = pgEnum("branch_enum", [
   "CSE",
   "CSE-AIML",
   "CSE-DS",
-  "CSE-HCIOT",
+  "CSE-HCIGT",
   "ECE",
   "ECE-IoT",
 ]);

@@ -100,7 +100,6 @@ export function QuickActions({ role }: QuickActionsProps) {
             <Button
               key={index}
               variant="outline"
-              size="sm"
               onClick={action.action}
               className="justify-start"
             >

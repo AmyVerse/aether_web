@@ -1,9 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/useToast";
 import { useEffect, useState } from "react";
-import { FaSpinner, FaTimes } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 
 interface AddClassModalProps {
   isOpen: boolean;
@@ -72,7 +73,7 @@ export default function AddClassModal({
   const fetchTimetableData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/timetable/entries");
+      const response = await fetch("/api/utils/timetable/entries");
       const data = await response.json();
 
       if (data.success) {
@@ -140,7 +141,7 @@ export default function AddClassModal({
 
       try {
         const response = await fetch(
-          `/api/timetable/entries?${params.toString()}`,
+          `/api/utils/timetable/entries?${params.toString()}`,
         );
         const data = await response.json();
 
@@ -209,24 +210,26 @@ export default function AddClassModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black/50 z-80 flex items-center justify-center p-4 min-h-screen">
+      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-auto my-auto animate-in fade-in-0 zoom-in-95 duration-200">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Add New Class</h2>
-            <p className="text-gray-600 text-sm">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+              Add New Class
+            </h2>
+            <p className="text-gray-600 text-xs sm:text-sm">
               Filter and select from available timetable entries
             </p>
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
           >
-            <FaTimes />
+            <FaTimes className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Filter Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -350,7 +353,11 @@ export default function AddClassModal({
 
             {loading ? (
               <div className="flex items-center justify-center p-8">
-                <FaSpinner className="animate-spin text-blue-600 text-xl mr-2" />
+                <LoadingSpinner
+                  size="lg"
+                  color="text-blue-600"
+                  className="mr-2"
+                />
                 <span className="text-gray-600">
                   Loading timetable entries...
                 </span>
@@ -436,7 +443,7 @@ export default function AddClassModal({
           >
             {submitting ? (
               <>
-                <FaSpinner className="animate-spin mr-2" />
+                <LoadingSpinner size="sm" className="mr-2" />
                 Adding...
               </>
             ) : (

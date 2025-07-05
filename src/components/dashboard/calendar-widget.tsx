@@ -89,10 +89,20 @@ export default function CalendarWidget() {
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </CardTitle>
           <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={previousMonth}>
+            <Button
+              variant="ghost"
+              width="auto"
+              padding="p-2"
+              onClick={previousMonth}
+            >
               <FaChevronLeft className="w-3 h-3" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={nextMonth}>
+            <Button
+              variant="ghost"
+              width="auto"
+              padding="p-2"
+              onClick={nextMonth}
+            >
               <FaChevronRight className="w-3 h-3" />
             </Button>
           </div>

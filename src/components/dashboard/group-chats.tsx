@@ -54,7 +54,12 @@ export default function GroupChats({ className }: GroupChatsProps) {
     <Card className={className}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-700">Group Chats</h3>
-        <Button variant="ghost" size="sm" className="text-blue-600">
+        <Button
+          variant="ghost"
+          width="auto"
+          padding="py-2 px-4"
+          className="text-blue-600"
+        >
           View All
         </Button>
       </div>

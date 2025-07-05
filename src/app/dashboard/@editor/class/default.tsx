@@ -1,4 +1,3 @@
-// Default component for @editor parallel route when on class pages
-export default function EditorClassDefault() {
+export default function DefaultClass() {
   return null;
 }

@@ -33,7 +33,7 @@ const excelImportSchema = z.object({
         "17:00-17:55",
       ]),
       branch: z
-        .enum(["CSE", "CSE-AIML", "CSE-DS", "CSE-HCIOT", "ECE", "ECE-IoT"])
+        .enum(["CSE", "CSE-AIML", "CSE-DS", "CSE-HCIGT", "ECE", "ECE-IoT"])
         .optional(),
       section: z.enum(["A", "B", "C"]).optional(),
       subject_code: z.string().optional(), // This will be mapped to course_code in DB
@@ -59,7 +59,7 @@ const updateTimetableEntrySchema = z.object({
   room_id: z.string().uuid().optional(),
   subject_id: z.string().uuid().optional(),
   branch: z
-    .enum(["CSE", "CSE-AIML", "CSE-DS", "CSE-HCIOT", "ECE", "ECE-IoT"])
+    .enum(["CSE", "CSE-AIML", "CSE-DS", "CSE-HCIGT", "ECE", "ECE-IoT"])
     .optional(),
   section: z.enum(["A", "B", "C"]).optional(),
   day: z.enum([
@@ -364,7 +364,7 @@ export async function POST(req: NextRequest) {
                 "CSE",
                 "CSE-AIML",
                 "CSE-DS",
-                "CSE-HCIOT",
+                "CSE-HCIGT",
                 "ECE",
                 "ECE-IoT",
               ])

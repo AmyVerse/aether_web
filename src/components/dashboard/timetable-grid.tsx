@@ -2,6 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/useToast";
 import { RoomData, SubjectData, TimetableEntry } from "@/types/timetable";
 import {
@@ -29,6 +30,7 @@ import {
 interface TimetableGridProps {
   academicYear: string;
   semesterType: "odd" | "even";
+  onCellClick?: (day: string, timeSlot: string, roomId?: string) => void;
 }
 
 const DAYS = [
@@ -55,6 +57,7 @@ const TIME_SLOTS = [
 export default function TimetableGrid({
   academicYear,
   semesterType,
+  onCellClick,
 }: TimetableGridProps) {
   const [timetableData, setTimetableData] = useState<TimetableEntry[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
@@ -406,7 +409,11 @@ export default function TimetableGrid({
 
   // Handle cell edit
   const handleCellEdit = (day: string, timeSlot: string) => {
-    setEditingCell({ day, timeSlot });
+    if (onCellClick) {
+      onCellClick(day, timeSlot, selectedRoom);
+    } else {
+      setEditingCell({ day, timeSlot });
+    }
   };
 
   // Handle cell update
@@ -474,6 +481,7 @@ export default function TimetableGrid({
           <Button
             onClick={() => fileInputRef.current?.click()}
             className="bg-green-600 text-white hover:bg-green-700"
+            width="6"
           >
             <FaUpload className="mr-2" />
             Import CSV/Excel
@@ -492,7 +500,7 @@ export default function TimetableGrid({
             </Button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-60">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -568,8 +576,8 @@ export default function TimetableGrid({
                     <Button
                       key={room.id}
                       variant={selectedRoom === room.id ? "default" : "outline"}
-                      size="sm"
                       onClick={() => setSelectedRoom(room.id)}
+                      width="7"
                     >
                       {room.room_number}
                     </Button>
@@ -648,7 +656,7 @@ export default function TimetableGrid({
 
       {loading && (
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <LoadingSpinner size="lg" color="text-blue-600" />
           <p className="mt-2 text-gray-600">Loading timetable...</p>
         </div>
       )}

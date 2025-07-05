@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
 import { classStudents, classTeachers, students, teachers } from "@/db/schema";
+import { authenticateTeacher } from "@/utils/auth-helpers";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -9,42 +10,12 @@ export async function GET(
   { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { teacher, error } = await authenticateTeacher();
+    if (error) return error;
 
     const resolvedParams = await params;
 
-    // Get teacher ID from email
-    const teacher = await db
-      .select()
-      .from(teachers)
-      .where(eq(teachers.email, session.user.email))
-      .limit(1);
-
-    if (teacher.length === 0) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
-    }
-
-    // Verify the class belongs to the current teacher
-    const teacherClass = await db
-      .select()
-      .from(classTeachers)
-      .where(eq(classTeachers.id, resolvedParams.classId))
-      .limit(1);
-
-    if (
-      teacherClass.length === 0 ||
-      teacherClass[0].teacher_id !== teacher[0].id
-    ) {
-      return NextResponse.json(
-        { error: "Class not found or unauthorized" },
-        { status: 403 },
-      );
-    }
-
-    // Get students enrolled in this class
+    // Get students enrolled in this class - teacher is already authenticated
     const classStudentsList = await db
       .select({
         id: classStudents.id,

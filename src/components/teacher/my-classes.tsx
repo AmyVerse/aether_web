@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/useToast";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   FaCalendarAlt,
@@ -10,7 +10,6 @@ import {
   FaClock,
   FaMapMarkerAlt,
   FaPlus,
-  FaSpinner,
   FaUsers,
 } from "react-icons/fa";
 import AddClassModal from "./add-class-modal";
@@ -39,7 +38,7 @@ function ClassTile({
   onCreateSession,
 }: ClassTileProps) {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
+    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-bold text-lg text-gray-900 mb-1">
@@ -73,20 +72,11 @@ function ClassTile({
       </div>
 
       <div className="flex gap-2">
-        <Button
-          onClick={() => onViewDetails(classData.id)}
-          variant="outline"
-          size="sm"
-          className="flex-1"
-        >
+        <Button onClick={() => onViewDetails(classData.id)} variant="outline">
           View Details
           <FaChevronRight className="ml-2 text-xs" />
         </Button>
-        <Button
-          onClick={() => onCreateSession(classData.id)}
-          className="flex-1 bg-blue-900 hover:bg-blue-700 text-white"
-          size="sm"
-        >
+        <Button onClick={() => onCreateSession(classData.id)} variant="default">
           Create Session
         </Button>
       </div>
@@ -102,8 +92,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [loading, setLoading] = useState(true);
-  const { showError } = useToast();
-  const router = useRouter();
+  const { showError, showSuccess } = useToast();
 
   // Fetch teacher's classes from API
   useEffect(() => {
@@ -160,7 +149,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
 
       if (response.ok) {
         const data = await response.json();
-        showError("Session created successfully!");
+        showSuccess("Session created successfully!");
         // Redirect to attendance page
         window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
       } else {
@@ -177,7 +166,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     return (
       <div className="bg-gray-50 p-6 rounded-xl">
         <div className="flex items-center justify-center py-12">
-          <FaSpinner className="animate-spin text-blue-600 text-xl mr-2" />
+          <LoadingSpinner size="lg" color="text-blue-600" className="mr-2" />
           <span className="text-gray-600">Loading your classes...</span>
         </div>
       </div>
@@ -217,7 +206,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {classes.map((classData) => (
             <ClassTile
               key={classData.id}

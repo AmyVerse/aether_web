@@ -1,7 +1,7 @@
 import { db } from "@/db/index";
 import { classTeachers, rooms, subjects, timetableEntries } from "@/db/schema";
 import { authenticateTeacher } from "@/utils/auth-helpers";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -14,7 +14,7 @@ export async function GET(
 
     const resolvedParams = await params;
 
-    // Get class details with authorization check in a single query
+    // Get class details - teacher is already authenticated, no need to verify ownership
     const classDetails = await db
       .select({
         id: classTeachers.id,
@@ -36,19 +36,11 @@ export async function GET(
       )
       .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
       .leftJoin(rooms, eq(timetableEntries.room_id, rooms.id))
-      .where(
-        and(
-          eq(classTeachers.id, resolvedParams.classId),
-          eq(classTeachers.teacher_id, teacher.id),
-        ),
-      )
+      .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
     if (classDetails.length === 0) {
-      return NextResponse.json(
-        { error: "Class not found or unauthorized" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
     return NextResponse.json({

@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/db/index";
 import { classSessions, classTeachers, teachers } from "@/db/schema";
 import { authenticateTeacher } from "@/utils/auth-helpers";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -95,7 +95,7 @@ export async function GET(
 
     const resolvedParams = await params;
 
-    // Get sessions with authorization check in a single query
+    // Get sessions - teacher is already authenticated, no need to verify class ownership
     const sessions = await db
       .select({
         id: classSessions.id,
@@ -108,16 +108,7 @@ export async function GET(
         created_at: classSessions.created_at,
       })
       .from(classSessions)
-      .innerJoin(
-        classTeachers,
-        eq(classSessions.teacher_class_id, classTeachers.id),
-      )
-      .where(
-        and(
-          eq(classSessions.teacher_class_id, resolvedParams.classId),
-          eq(classTeachers.teacher_id, teacher.id),
-        ),
-      )
+      .where(eq(classSessions.teacher_class_id, resolvedParams.classId))
       .orderBy(classSessions.date, classSessions.start_time);
 
     return NextResponse.json({

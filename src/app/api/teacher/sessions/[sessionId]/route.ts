@@ -7,6 +7,7 @@ import {
   teachers,
   timetableEntries,
 } from "@/db/schema";
+import { authenticateTeacher } from "@/utils/auth-helpers";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,25 +17,12 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { teacher, error } = await authenticateTeacher();
+    if (error) return error;
 
     const resolvedParams = await params;
 
-    // Get teacher ID from email
-    const teacher = await db
-      .select()
-      .from(teachers)
-      .where(eq(teachers.email, session.user.email))
-      .limit(1);
-
-    if (teacher.length === 0) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
-    }
-
-    // Get session details with class and subject information
+    // Get session details with class and subject information - teacher already authenticated
     const sessionDetails = await db
       .select({
         id: classSessions.id,
@@ -62,19 +50,11 @@ export async function GET(
         eq(classTeachers.timetable_entry_id, timetableEntries.id),
       )
       .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
-      .where(
-        and(
-          eq(classSessions.id, resolvedParams.sessionId),
-          eq(classTeachers.teacher_id, teacher[0].id),
-        ),
-      )
+      .where(eq(classSessions.id, resolvedParams.sessionId))
       .limit(1);
 
     if (sessionDetails.length === 0) {
-      return NextResponse.json(
-        { error: "Session not found or unauthorized" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
     return NextResponse.json({

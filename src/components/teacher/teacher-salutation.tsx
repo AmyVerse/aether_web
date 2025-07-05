@@ -5,7 +5,8 @@ import { FaCloudSun, FaMoon, FaSun } from "react-icons/fa";
 
 export default function TeacherSalutation() {
   const { data: session } = useSession();
-  const teacherName = session?.user?.name || "Teacher";
+  const fullName = session?.user?.name || "Teacher";
+  const firstName = fullName.split(" ")[0]; // Get only the first name
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -19,7 +20,7 @@ export default function TeacherSalutation() {
         text: "Good Afternoon",
         icon: <FaCloudSun className="text-orange-500" />,
       };
-    return { text: "Good Evening", icon: <FaMoon className="text-blue-500" /> };
+    return { text: "Good Evening", icon: <FaMoon className="text-white" /> };
   };
 
   const greeting = getGreeting();
@@ -31,27 +32,20 @@ export default function TeacherSalutation() {
   });
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-6 rounded-xl shadow-lg">
+    <div className="bg-gradient-to-tl from-gray-600 to-gray-800 text-white p-6 rounded-xl">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-2">
             {greeting.icon}
             <h1 className="text-2xl font-bold">
-              {greeting.text}, {teacherName}!
+              {greeting.text}, Prof. {firstName}!
             </h1>
           </div>
-          <p className="text-blue-100 text-lg">
-            Ready to inspire minds today? Here's your overview for {today}
-          </p>
+          <p className="text-blue-100 sm:hidden block text-lg">{today}</p>
         </div>
         <div className="hidden md:block">
           <div className="text-right">
-            <div className="text-3xl font-bold">
-              {new Date().toLocaleDateString("en-US", { day: "numeric" })}
-            </div>
-            <div className="text-blue-200">
-              {new Date().toLocaleDateString("en-US", { month: "short" })}
-            </div>
+            <p className="text-blue-100 text-lg">{today}</p>
           </div>
         </div>
       </div>

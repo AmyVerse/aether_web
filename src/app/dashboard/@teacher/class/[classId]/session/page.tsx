@@ -1,59 +1,69 @@
+"use client";
+
+import Header from "@/components/layout/header";
+import Sidebar from "@/components/layout/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/db";
-import {
-  classSessions,
-  classTeachers,
-  subjects,
-  timetableEntries,
-} from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { CalendarDays, Clock, Plus, Users } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
 
 interface SessionListPageProps {
   params: Promise<{ classId: string }>;
 }
 
-async function SessionList({ classId }: { classId: string }) {
-  // Verify class exists and get class info with subject details
-  const classInfo = await db
-    .select({
-      id: classTeachers.id,
-      teacher_id: classTeachers.teacher_id,
-      timetable_entry_id: classTeachers.timetable_entry_id,
-      assigned_at: classTeachers.assigned_at,
-      is_active: classTeachers.is_active,
-      notes: classTeachers.notes,
-      subject_name: subjects.course_name,
-      subject_code: subjects.course_code,
-      short_name: subjects.short_name,
-    })
-    .from(classTeachers)
-    .leftJoin(
-      timetableEntries,
-      eq(classTeachers.timetable_entry_id, timetableEntries.id),
-    )
-    .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
-    .where(eq(classTeachers.id, classId))
-    .limit(1);
+interface ClassData {
+  id: string;
+  teacher_id: string;
+  timetable_entry_id: string;
+  assigned_at: string;
+  is_active: boolean;
+  notes: string;
+  subject_name: string;
+  subject_code: string;
+  short_name: string;
+}
 
-  if (classInfo.length === 0) {
-    notFound();
+interface SessionData {
+  id: string;
+  teacher_class_id: string;
+  date: string;
+  start_time: string;
+  end_time?: string;
+  status: string;
+  notes?: string;
+}
+
+// Client-side API call to fetch class and sessions data
+async function fetchClassAndSessions(classId: string): Promise<{
+  classData: ClassData;
+  sessions: SessionData[];
+} | null> {
+  try {
+    const response = await fetch(`/api/teacher/classes/${classId}/sessions`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error("Failed to fetch class sessions");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching class sessions:", error);
+    return null;
   }
+}
 
-  // Get all sessions for this class
-  const sessions = await db
-    .select()
-    .from(classSessions)
-    .where(eq(classSessions.teacher_class_id, classId))
-    .orderBy(classSessions.date);
-
-  const classData = classInfo[0];
-
+function SessionList({
+  classData,
+  sessions,
+  classId,
+}: {
+  classData: ClassData;
+  sessions: SessionData[];
+  classId: string;
+}) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -146,33 +156,101 @@ async function SessionList({ classId }: { classId: string }) {
   );
 }
 
-export default async function SessionListPage({
-  params,
-}: SessionListPageProps) {
-  const { classId } = await params;
+export default function SessionListPage({ params }: SessionListPageProps) {
+  const [classId, setClassId] = useState<string>("");
+  const [classData, setClassData] = useState<ClassData | null>(null);
+  const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const { classId: resolvedClassId } = await params;
+        setClassId(resolvedClassId);
+
+        // Fetch class and sessions data
+        const data = await fetchClassAndSessions(resolvedClassId);
+        if (!data) {
+          setError("Class not found");
+          return;
+        }
+
+        setClassData(data.classData);
+        setSessions(data.sessions);
+      } catch (err) {
+        setError("Failed to load class data");
+        console.error("Error loading class data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [params]);
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+            pageTitle="Sessions"
+          />
+
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+            <Card>
+              <CardContent className="py-12 text-center">
+                <h3 className="text-lg font-medium mb-2">Error</h3>
+                <p className="text-muted-foreground">{error}</p>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-6">
-          <div className="h-8 bg-muted rounded animate-pulse" />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                    <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-                    <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      }
-    >
-      <SessionList classId={classId} />
-    </Suspense>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <Header
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          pageTitle="Sessions"
+        />
+
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 sm:p-4 md:p-6">
+          {loading ? (
+            <div className="space-y-4 sm:space-y-6">
+              <div className="h-6 sm:h-8 bg-muted rounded animate-pulse" />
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="space-y-3">
+                        <div className="h-4 bg-muted rounded animate-pulse" />
+                        <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+                        <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : classData ? (
+            <SessionList
+              classData={classData}
+              sessions={sessions}
+              classId={classId}
+            />
+          ) : null}
+        </main>
+      </div>
+    </div>
   );
 }

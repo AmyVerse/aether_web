@@ -74,7 +74,12 @@ export default function StudentTests({ className }: StudentTestsProps) {
     <Card className={className}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-700">Student Tests</h3>
-        <Button variant="ghost" size="sm" className="text-blue-600">
+        <Button
+          variant="ghost"
+          width="auto"
+          padding="py-2 px-4"
+          className="text-blue-600"
+        >
           All Tests
         </Button>
       </div>

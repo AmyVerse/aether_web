@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/useToast";
 import { useEffect, useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   FaClock,
   FaMapMarkerAlt,
   FaPlus,
-  FaSpinner,
   FaTimes,
   FaUser,
   FaUsers,
@@ -228,7 +228,7 @@ export default function ClassDetailView({
         const data = await response.json();
         showSuccess("Session created successfully!");
         // Redirect to attendance page
-        window.location.href = `/class/${data.data.id}`;
+        window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
       } else {
         const error = await response.json();
         showError(error.error || "Failed to create session");
@@ -254,8 +254,8 @@ export default function ClassDetailView({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <FaSpinner className="animate-spin text-blue-700 text-xl mr-2" />
+      <div className="flex items-center justify-center py-12 z-0">
+        <LoadingSpinner size="lg" color="text-blue-700" className="mr-2" />
         <span className="text-gray-600">Loading class details...</span>
       </div>
     );
@@ -263,7 +263,7 @@ export default function ClassDetailView({
 
   if (!classDetails) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 z-0">
         <p className="text-gray-500">Class not found</p>
         <Button onClick={handleBack} variant="outline" className="mt-4">
           <FaArrowLeft className="mr-2" />
@@ -274,37 +274,71 @@ export default function ClassDetailView({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 z-0">
+      {/* Back Button - Above everything */}
+      <div className="flex items-center">
+        <Button
+          onClick={handleBack}
+          variant="outline"
+          className="flex items-center gap-2 px-3 py-2 text-sm border-gray-200/60 hover:border-gray-300/80 hover:bg-gray-100/80"
+        >
+          <FaArrowLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Back to Classes</span>
+          <span className="sm:hidden">Back</span>
+        </Button>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button onClick={handleBack} variant="outline" size="sm">
-            <FaArrowLeft className="mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+      <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
               {classDetails.subject_name}
             </h1>
-            <p className="text-gray-600">
-              {classDetails.subject_code} • {classDetails.branch} - Section{" "}
-              {classDetails.section}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-600 mb-4">
+              <span className="font-mono bg-gray-100/80 px-2 py-1 rounded">
+                {classDetails.subject_code}
+              </span>
+              <span>{classDetails.branch}</span>
+              <span>Section {classDetails.section}</span>
+            </div>
+
+            {/* Class details grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FaCalendarAlt className="text-blue-600 w-4 h-4 flex-shrink-0" />
+                <span>{classDetails.day}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FaClock className="text-green-600 w-4 h-4 flex-shrink-0" />
+                <span>{classDetails.time_slot}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FaMapMarkerAlt className="text-orange-600 w-4 h-4 flex-shrink-0" />
+                <span>{classDetails.room_number}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 lg:flex-col lg:gap-2">
+            <Button
+              onClick={() => setShowCreateSession(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
+            >
+              <FaPlus className="w-4 h-4" />
+              <span>Create Session</span>
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
+
+        {/* Additional action buttons */}
+        <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-gray-100/60">
           <Button
             onClick={openAddStudentsModal}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
           >
-            <FaPlus className="mr-2" />
-            Add Students
-          </Button>
-          <Button
-            onClick={handleCreateSession}
-            className="bg-blue-900 hover:bg-blue-700 text-white"
-          >
-            Create Session
+            <FaPlus className="w-4 h-4" />
+            <span>Add Students</span>
           </Button>
         </div>
       </div>
@@ -412,7 +446,8 @@ export default function ClassDetailView({
                   <Button
                     onClick={() => handleRemoveStudent(classStudent.id)}
                     variant="outline"
-                    size="sm"
+                    width="auto"
+                    padding="py-2 px-4"
                     className="text-red-600 hover:bg-red-50"
                   >
                     Remove
@@ -501,7 +536,8 @@ export default function ClassDetailView({
                       handleViewSession(session.id);
                     }}
                     variant="outline"
-                    size="sm"
+                    width="auto"
+                    padding="py-2 px-4"
                   >
                     Take Attendance
                   </Button>
@@ -514,29 +550,33 @@ export default function ClassDetailView({
 
       {/* Add Students Modal */}
       {showAddStudents && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black/50 z-80 flex items-center justify-center p-4 min-h-screen">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto mx-auto my-auto animate-in fade-in-0 zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">
                   Add Students
                 </h2>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 text-xs sm:text-sm">
                   Select students to add to this class
                 </p>
               </div>
               <button
                 onClick={closeAddStudentsModal}
-                className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
               >
-                <FaTimes />
+                <FaTimes className="w-4 h-4" />
               </button>
             </div>
 
             <div className="p-6">
               {studentsLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <FaSpinner className="animate-spin text-blue-600 text-xl mr-2" />
+                  <LoadingSpinner
+                    size="lg"
+                    color="text-blue-600"
+                    className="mr-2"
+                  />
                   <span className="text-gray-600">Loading students...</span>
                 </div>
               ) : availableStudents.length === 0 ? (
@@ -603,7 +643,7 @@ export default function ClassDetailView({
               >
                 {submitting ? (
                   <>
-                    <FaSpinner className="animate-spin mr-2" />
+                    <LoadingSpinner size="sm" className="mr-2" />
                     Adding...
                   </>
                 ) : (

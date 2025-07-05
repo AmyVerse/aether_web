@@ -37,13 +37,13 @@ function ToastContainer({
 
   return (
     <div
-      className="fixed top-4 left-1/2 z-50 space-y-2"
+      className="fixed top-4 left-1/2 z-[100] space-y-2"
       style={{
         position: "fixed",
         top: "1rem",
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 1000,
+        zIndex: 100,
         pointerEvents: "none",
       }}
     >
