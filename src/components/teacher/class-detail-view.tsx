@@ -254,7 +254,7 @@ export default function ClassDetailView({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 z-0">
+      <div className="flex items-center justify-center py-12">
         <LoadingSpinner size="lg" color="text-blue-700" className="mr-2" />
         <span className="text-gray-600">Loading class details...</span>
       </div>
@@ -263,7 +263,7 @@ export default function ClassDetailView({
 
   if (!classDetails) {
     return (
-      <div className="text-center py-12 z-0">
+      <div className="text-center py-12">
         <p className="text-gray-500">Class not found</p>
         <Button onClick={handleBack} variant="outline" className="mt-4">
           <FaArrowLeft className="mr-2" />
@@ -274,7 +274,7 @@ export default function ClassDetailView({
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 z-0">
+    <div className="space-y-4 sm:space-y-6">
       {/* Back Button - Above everything */}
       <div className="flex items-center">
         <Button
@@ -550,7 +550,7 @@ export default function ClassDetailView({
 
       {/* Add Students Modal */}
       {showAddStudents && (
-        <div className="fixed inset-0 bg-black/50 z-80 flex items-center justify-center p-4 min-h-screen">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 min-h-screen">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto mx-auto my-auto animate-in fade-in-0 zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200">
               <div>

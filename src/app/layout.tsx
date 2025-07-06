@@ -1,3 +1,4 @@
+import { SessionProvider as CachedSessionProvider } from "@/hooks/useSessionCache";
 import { ToastProvider } from "@/hooks/useToast";
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
@@ -46,7 +47,9 @@ export default function RootLayout({
         className={`${funnel.variable} ${poppins.variable} ${inter.variable} ${manrope.variable} antialiased`}
       >
         <SessionProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <CachedSessionProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </CachedSessionProvider>
         </SessionProvider>
       </body>
     </html>

@@ -1,31 +1,31 @@
-import { Avatar } from "@/components/ui/avatar";
-import { signOut, useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { FaBars, FaBell, FaSearch, FaTimes } from "react-icons/fa";
+import { useCachedSession } from "@/hooks/useSessionCache";
+import { PanelRightClose } from "lucide-react";
+import { signOut } from "next-auth/react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { FaBell, FaCog, FaEnvelope, FaSearch, FaUser } from "react-icons/fa";
+import Dialog from "../ui/dialog";
 
 interface HeaderProps {
   onMenuClick?: () => void;
-  pageTitle?: string; // Page title to display
 }
 
-export default function Header({ onMenuClick, pageTitle }: HeaderProps) {
-  const { data: session } = useSession();
-  const user = session?.user;
-  const pathname = usePathname();
+export default function Header({ onMenuClick }: HeaderProps) {
+  const { userName, userEmail, userImage, userRole } = useCachedSession();
+  const user = {
+    name: userName,
+    email: userEmail,
+    image: userImage,
+    role: userRole,
+  };
 
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Use provided pageTitle or default to Dashboard
-  const getPageTitle = () => {
-    return pageTitle || "Dashboard";
-  };
-
-  // Dummy notifications - you can replace with real data later
+  // Dummy notifications
   const notifications = [
     { id: 1, title: "New session created", time: "2 min ago", type: "info" },
     {
@@ -42,222 +42,302 @@ export default function Header({ onMenuClick, pageTitle }: HeaderProps) {
     },
   ];
 
+  // Dummy messages
+  const messages = [
+    {
+      id: 1,
+      sender: "John Doe",
+      message: "Hey, can we reschedule the meeting?",
+      time: "5 min ago",
+    },
+    {
+      id: 2,
+      sender: "Jane Smith",
+      message: "Thanks for the presentation!",
+      time: "1 hour ago",
+    },
+    {
+      id: 3,
+      sender: "Mike Johnson",
+      message: "Please review the assignment",
+      time: "2 hours ago",
+    },
+  ];
+
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" });
     setShowSignOutModal(false);
   };
 
+  // Helper function to get user initials
+  const getUserInitials = (name: string | null | undefined) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Close all popups when clicking anywhere
+  const closeAllPopups = () => {
+    setShowMessages(false);
+    setShowNotifications(false);
+    setShowProfileMenu(false);
+  };
+
+  // Add global click listener to close popups when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      // Only close if clicking outside header area and no popup buttons are clicked
+      if (
+        !target.closest("header") &&
+        (showMessages || showNotifications || showProfileMenu)
+      ) {
+        closeAllPopups();
+      }
+    };
+
+    if (showMessages || showNotifications || showProfileMenu) {
+      document.addEventListener("click", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showMessages, showNotifications, showProfileMenu]);
+
   return (
-    <header className="flex items-center justify-between py-3 px-4 sm:py-4 sm:px-6 bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm z-70">
-      {/* Left side - Menu + Title */}
-      <div className="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
-        <button
-          className="md:hidden p-2 rounded-lg hover:bg-gray-100/80 transition-colors duration-200 group border border-gray-200/60 hover:border-gray-300/80 flex-shrink-0"
-          onClick={onMenuClick}
-        >
-          <FaBars className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 group-hover:text-gray-800" />
-        </button>
+    <header className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="flex items-center justify-between h-16 px-6">
+        {/* Left side - Menu button and search bar */}
+        <div className="flex items-center gap-4">
+          {/* Mobile menu button */}
+          <button
+            className="md:hidden bg-white border border-gray-300 rounded-md p-2 transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 flex items-center justify-center"
+            onClick={onMenuClick}
+          >
+            <PanelRightClose className="w-4 h-4 text-gray-700" />
+          </button>
 
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <h1 className="text-lg sm:text-2xl font-[poppins] font-medium text-gray-900 tracking-tight truncate">
-            {getPageTitle()}
-          </h1>
-        </div>
-      </div>
-
-      {/* Right side - Search, Notifications, Avatar */}
-      <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-        {/* Search - Modern Design - Hidden on mobile, shown on tablet+ */}
-        <div className="relative hidden sm:block">
-          {isSearchExpanded ? (
-            <div className="flex items-center gap-3 bg-gray-50/80 rounded-xl px-4 py-2 border border-gray-300/80 shadow-sm">
-              <FaSearch className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          {/* Search bar */}
+          <div className="relative w-auto">
+            <div className="flex items-center bg-gray-100 border border-gray-300 rounded-lg px-4 py-2 sm:w-80">
+              <FaSearch className="w-4 h-4 text-gray-500 mr-3" />
               <input
                 type="text"
-                placeholder="Search classes, sessions..."
+                placeholder="Search task"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 lg:w-64 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
-                autoFocus
-                onBlur={() => setIsSearchExpanded(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setIsSearchExpanded(false);
-                }}
+                className="bg-transparent text-sm text-gray-700 placeholder-gray-500 focus:outline-none flex-1"
               />
-              <button
-                onClick={() => setIsSearchExpanded(false)}
-                className="p-1 rounded-md hover:bg-gray-200/60 transition-colors duration-200 border border-gray-200/60 hover:border-gray-300/60 flex-shrink-0"
-              >
-                <FaTimes className="w-3 h-3 text-gray-500" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsSearchExpanded(true)}
-              className="p-2 sm:p-3 rounded-xl transition-all duration-200 group border border-gray-200/60 hover:border-gray-300/80 hover:bg-gray-100/80"
-            >
-              <FaSearch className="w-4 h-4 text-gray-600 group-hover:text-gray-700 transition-colors duration-200" />
-            </button>
-          )}
-        </div>
-
-        {/* Notifications - Modern Icon */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-              setShowProfileMenu(false);
-            }}
-            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 group relative border ${
-              showNotifications
-                ? "bg-blue-50/80 border-blue-200/80 text-blue-600"
-                : "border-gray-200/60 hover:border-gray-300/80 hover:bg-gray-100/80"
-            }`}
-          >
-            <FaBell
-              className={`w-4 h-4 transition-colors duration-200 ${
-                showNotifications
-                  ? "text-blue-600"
-                  : "text-gray-600 group-hover:text-gray-700"
-              }`}
-            />
-            <span className="absolute top-1 right-1 sm:top-2 sm:right-2 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-          </button>
-
-          {showNotifications && (
-            <>
-              <div
-                className="fixed inset-0 z-55"
-                onClick={() => setShowNotifications(false)}
-              />
-              <div className="absolute right-0 top-12 sm:top-14 w-72 sm:w-80 bg-white/95 backdrop-blur-sm border-2 border-gray-400 rounded-2xl shadow-xl z-90 max-h-[80vh] overflow-hidden">
-                <div className="p-4 sm:p-5 border-b border-gray-100/80">
-                  <h3 className="font-semibold text-gray-900 text-base sm:text-lg">
-                    Notifications
-                  </h3>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className="p-3 sm:p-4 border-b border-gray-50/80 hover:bg-gray-50/50 cursor-pointer transition-colors duration-200"
-                    >
-                      <p className="text-sm text-gray-900 font-medium">
-                        {notif.title}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">{notif.time}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-3 sm:p-4 border-t border-gray-100/80">
-                  <button className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium py-2 rounded-lg hover:bg-blue-50/50 transition-colors duration-200 border border-blue-200/40 hover:border-blue-300/60">
-                    View All Notifications
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Avatar with Profile Menu - Modern Design */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowProfileMenu(!showProfileMenu);
-              setShowNotifications(false);
-            }}
-            className={`p-1 rounded-xl transition-all duration-200 border ${
-              showProfileMenu
-                ? "ring-2 ring-blue-200/80 border-blue-200/80 bg-blue-50/30"
-                : "ring-2 ring-transparent border-gray-200/60 hover:ring-gray-200/50 hover:border-gray-300/80 hover:bg-gray-100/80"
-            }`}
-          >
-            <Avatar
-              src={user?.image}
-              alt={user?.name || "User"}
-              size="sm"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-sm"
-            />
-          </button>
-
-          {showProfileMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-55"
-                onClick={() => setShowProfileMenu(false)}
-              />
-              <div className="absolute right-0 top-12 sm:top-14 w-64 sm:w-72 bg-white/95 backdrop-blur-sm border-2 border-gray-200/80 rounded-2xl shadow-xl z-90 max-h-[80vh] overflow-hidden">
-                <div className="p-4 sm:p-5 border-b border-gray-100/80">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      src={user?.image}
-                      alt={user?.name || "User"}
-                      size="md"
-                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-gray-200/60"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                        {user?.name}
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">
-                        {user?.email}
-                      </p>
-                      <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-md mt-1 capitalize border border-blue-200/40">
-                        {user?.role}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-2">
-                  <button className="w-full text-left px-3 sm:px-4 py-3 text-sm text-gray-700 hover:bg-gray-50/80 rounded-xl transition-colors duration-200 font-medium border border-transparent hover:border-gray-200/60">
-                    Edit Profile
-                  </button>
-                  <hr className="my-2 border-gray-200/60" />
-                  <button
-                    className="w-full text-left px-3 sm:px-4 py-3 text-sm text-red-600 hover:bg-red-50/80 rounded-xl transition-colors duration-200 font-medium border border-transparent hover:border-red-200/60"
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      setShowSignOutModal(true);
-                    }}
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Sign Out Confirmation Modal - Modern Design */}
-      {showSignOutModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-90 flex items-center justify-center p-4 min-h-screen">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-full max-w-md mx-auto my-auto border-2 border-gray-200/80 animate-in fade-in-0 zoom-in-95 duration-200">
-            <div className="p-4 sm:p-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                Sign Out
-              </h3>
-              <p className="text-gray-600 mb-6 sm:mb-8 leading-relaxed text-sm sm:text-base">
-                Are you sure you want to sign out of your account?
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                <button
-                  onClick={() => setShowSignOutModal(false)}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100/80 hover:bg-gray-200/80 rounded-xl transition-colors duration-200 border border-gray-200/60 hover:border-gray-300/80 order-2 sm:order-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-3 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-200 shadow-sm border border-red-700/80 hover:border-red-800/80 order-1 sm:order-2"
-                >
-                  Sign Out
-                </button>
-              </div>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Right side - Messages, Notifications and Avatar */}
+        <div className="flex items-center sm:gap-3">
+          {/* Messages icon */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowNotifications(false);
+                setShowProfileMenu(false);
+                setShowMessages(!showMessages);
+              }}
+              className="p-2.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+            >
+              <FaEnvelope className="w-4 h-4 text-gray-600" />
+              {messages.length > 0 && (
+                <span className="absolute top-1 right-1 bg-blue-500 rounded-full w-2 h-2"></span>
+              )}
+            </button>
+
+            {/* Messages dropdown */}
+            {showMessages && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900">Messages</h3>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-50 last:border-b-0"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                          {user?.image ? (
+                            <Image
+                              src={user.image}
+                              alt="User"
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-medium text-gray-600">
+                              {getUserInitials(user?.name)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {message.sender}
+                          </div>
+                          <div className="text-sm text-gray-600 truncate">
+                            {message.message}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {message.time}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Notifications */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowMessages(false);
+                setShowProfileMenu(false);
+                setShowNotifications(!showNotifications);
+              }}
+              className="p-2.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+            >
+              <FaBell className="w-4 h-4 text-gray-600" />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 bg-red-500 rounded-full w-2 h-2"></span>
+              )}
+            </button>
+
+            {/* Notifications dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-50 last:border-b-0"
+                    >
+                      <div className="text-sm font-medium text-gray-900">
+                        {notification.title}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {notification.time}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* User Avatar */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowMessages(false);
+                setShowNotifications(false);
+                setShowProfileMenu(!showProfileMenu);
+              }}
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors ml-2"
+            >
+              <div className="w-9 h-9 rounded-lg overflow-hidden bg-violet-500 flex items-center justify-center">
+                {user?.image ? (
+                  <Image
+                    src={user.image}
+                    alt={user?.name || "User"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-white">
+                    {getUserInitials(user?.name)}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {/* Profile dropdown */}
+            {showProfileMenu && (
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
+                {/* Profile Card */}
+                <div className="px-4 py-4">
+                  <div className="flex items-center gap-5 mb-4">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-violet-500 flex items-center justify-center">
+                      {user?.image ? (
+                        <Image
+                          src={user.image}
+                          alt={user?.name || "User"}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-md font-medium text-white">
+                          {getUserInitials(user?.name)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-lg font-semibold text-gray-900 truncate">
+                        {user?.name || "User"}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate">
+                        {user?.email || "user@example.com"}
+                      </div>
+                      <div className="text-xs bg-blue-100 rounded-md text-blue-600 w-fit p-1 font-medium mt-2">
+                        {user?.role?.charAt(0).toUpperCase() +
+                          (user?.role?.slice(1) || "User")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-gray-200" />
+
+                  <div className="pt-2 space-y-1">
+                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-left">
+                      <FaUser className="w-4 h-4 text-gray-400" />
+                      <span>Account Settings</span>
+                    </button>
+                    <button
+                      onClick={() => setShowSignOutModal(true)}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
+                    >
+                      <FaCog className="w-4 h-4 text-red-400" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Sign Out Confirmation Dialog */}
+      <Dialog
+        isOpen={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        title="Sign out"
+        description="Are you sure you want to sign out?"
+        confirmText="Sign out"
+        cancelText="Cancel"
+        onConfirm={handleSignOut}
+        confirmVariant="destructive"
+      />
     </header>
   );
 }

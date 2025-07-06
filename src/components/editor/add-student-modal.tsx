@@ -62,7 +62,7 @@ export default function AddStudentModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-80 flex items-center justify-center p-4 min-h-screen">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 min-h-screen">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto my-auto border-2 border-gray-200/80 animate-in fade-in-0 zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">

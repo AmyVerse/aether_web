@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import DashboardWrapper from "@/components/layout/dashboard-wrapper";
 import { users } from "@/db/schema";
 import { db } from "@/index";
 import { eq } from "drizzle-orm";
@@ -45,16 +46,23 @@ export default async function DashboardLayout({
   }
 
   // Render appropriate content based on role while keeping URL as /dashboard
+  let roleContent: ReactNode;
   switch (userRole) {
     case "admin":
-      return admin;
+      roleContent = admin;
+      break;
     case "teacher":
-      return teacher;
+      roleContent = teacher;
+      break;
     case "student":
-      return student;
+      roleContent = student;
+      break;
     case "editor":
-      return editor;
+      roleContent = editor;
+      break;
     default:
-      return children; // This will show the setup page
+      roleContent = children; // This will show the setup page
   }
+
+  return <DashboardWrapper>{roleContent}</DashboardWrapper>;
 }

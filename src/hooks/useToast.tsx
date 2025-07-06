@@ -37,7 +37,7 @@ function ToastContainer({
 
   return (
     <div
-      className="fixed top-4 left-1/2 z-[100] space-y-2"
+      className="fixed top-4 left-1/2 space-y-2"
       style={{
         position: "fixed",
         top: "1rem",

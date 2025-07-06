@@ -210,7 +210,7 @@ export default function AddClassModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-80 flex items-center justify-center p-4 min-h-screen">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 min-h-screen">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-auto my-auto animate-in fade-in-0 zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200">
           <div>

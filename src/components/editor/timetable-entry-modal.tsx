@@ -239,7 +239,7 @@ export function TimetableEntryModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-80 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="p-4 sm:p-6">
           <div className="flex justify-between items-center mb-4">
@@ -387,7 +387,7 @@ export function TimetableEntryModal({
                   required
                 />
                 {showSubjectDropdown && (
-                  <div className="absolute z-90 w-full max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg mt-1">
+                  <div className="absolute w-full max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg mt-1">
                     {subjects.length > 0 ? (
                       subjects.map((subject) => (
                         <div
@@ -439,7 +439,7 @@ export function TimetableEntryModal({
                   required
                 />
                 {showRoomDropdown && (
-                  <div className="absolute z-90 w-full max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg mt-1">
+                  <div className="absolute w-full max-h-48 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg mt-1">
                     {rooms.length > 0 ? (
                       rooms.map((room) => (
                         <div

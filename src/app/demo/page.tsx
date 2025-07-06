@@ -8,15 +8,14 @@ export default function DemoPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden z-0">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0 h-full z-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
         <Header
-          pageTitle="Component Demos"
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-auto z-0">
-          <div className="max-w-4xl mx-auto space-y-8 z-0 relative">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-auto">
+          <div className="max-w-4xl mx-auto space-y-8 relative">
             <div className="text-center">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
                 Aether UI Components Demo

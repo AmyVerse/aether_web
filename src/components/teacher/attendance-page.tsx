@@ -239,7 +239,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center z-0">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
           <LoadingSpinner size="lg" color="text-blue-600" />
           <span className="text-gray-600">Loading session details...</span>
@@ -250,7 +250,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
 
   if (!sessionDetails) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center z-0">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 mb-4">Session not found</p>
           <Button onClick={goBack} variant="outline">
@@ -274,7 +274,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   const hasChanges = students.some((s) => s.hasChanged);
 
   return (
-    <div className="min-h-screen bg-gray-50 z-0">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         {/* Back Button - Above everything */}
         <div className="flex items-center">
@@ -290,7 +290,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
         </div>
 
         {/* Header */}
-        <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60 z-0">
+        <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
@@ -403,7 +403,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60 z-0">
+        <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
               Quick Actions
@@ -447,7 +447,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
         </div>
 
         {/* Students Grid */}
-        <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60 z-0">
+        <div className="bg-white/95 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100/60">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
               Student Attendance

@@ -1,35 +1,21 @@
 "use client";
 import CalendarWidget from "@/components/dashboard/calendar-widget";
 import UpcomingClasses from "@/components/dashboard/upcoming-classes";
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
-import { useState } from "react";
 
 export default function StudentDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden z-0">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0 h-full z-0">
-        <Header
-          pageTitle="Dashboard"
-          onMenuClick={() => setSidebarOpen(true)}
-        />
-        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-auto z-0">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 z-0 relative">
-            {/* Main Content Area */}
-            <div className="lg:col-span-8 space-y-6">
-              {/* Classes */}
-              <UpcomingClasses />
-            </div>
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        {/* Main Content Area */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Classes */}
+          <UpcomingClasses />
+        </div>
 
-            {/* Sidebar */}
-            <div className="lg:col-span-4 space-y-6">
-              <CalendarWidget />
-            </div>
-          </div>
-        </main>
+        {/* Sidebar */}
+        <div className="lg:col-span-4 space-y-6">
+          <CalendarWidget />
+        </div>
       </div>
     </div>
   );

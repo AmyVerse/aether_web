@@ -1,6 +1,4 @@
 "use client";
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
 import ClassDetailView from "@/components/teacher/class-detail-view";
 import { useEffect, useState } from "react";
 
@@ -11,7 +9,6 @@ interface PageProps {
 }
 
 export default function ClassDetailPage({ params }: PageProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [classData, setClassData] = useState<{
     id: string;
     subject_name: string;
@@ -42,17 +39,8 @@ export default function ClassDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header
-          pageTitle="Class Details"
-          onMenuClick={() => setSidebarOpen(true)}
-        />
-        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-auto">
-          {classId && <ClassDetailView classId={classId} />}
-        </main>
-      </div>
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+      {classId && <ClassDetailView classId={classId} />}
     </div>
   );
 }

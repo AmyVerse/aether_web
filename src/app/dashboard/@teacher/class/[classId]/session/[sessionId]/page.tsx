@@ -1,9 +1,7 @@
 "use client";
 
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
 import AttendancePage from "@/components/teacher/attendance-page";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import ContentLoader from "@/components/ui/content-loader";
 import { useEffect, useState } from "react";
 
 interface PageProps {
@@ -62,7 +60,6 @@ export default function TeacherSessionAttendancePage({ params }: PageProps) {
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -94,55 +91,22 @@ export default function TeacherSessionAttendancePage({ params }: PageProps) {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <Header
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-            pageTitle="Attendance"
-          />
-
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 sm:p-4 md:p-6">
-            <div className="text-center py-8 sm:py-12">
-              <h3 className="text-base sm:text-lg font-medium mb-2">Error</h3>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                {error}
-              </p>
-            </div>
-          </main>
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="text-center py-8 sm:py-12">
+          <h3 className="text-base sm:text-lg font-medium mb-2">Error</h3>
+          <p className="text-muted-foreground text-sm sm:text-base">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Header
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          pageTitle="Attendance"
-        />
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 sm:p-4 md:p-6">
-          {loading ? (
-            <div className="text-center py-8 sm:py-12">
-              <LoadingSpinner
-                size="lg"
-                color="text-primary"
-                className="mx-auto"
-              />
-              <p className="mt-4 text-muted-foreground text-sm sm:text-base">
-                Loading session...
-              </p>
-            </div>
-          ) : sessionId ? (
-            <AttendancePage sessionId={sessionId} />
-          ) : null}
-        </main>
-      </div>
+    <div className="p-3 sm:p-4 md:p-6">
+      {loading ? (
+        <ContentLoader message="Loading session..." />
+      ) : sessionId ? (
+        <AttendancePage sessionId={sessionId} />
+      ) : null}
     </div>
   );
 }

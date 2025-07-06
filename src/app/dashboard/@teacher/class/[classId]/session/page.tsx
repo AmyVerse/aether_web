@@ -1,7 +1,5 @@
 "use client";
 
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,7 +160,6 @@ export default function SessionListPage({ params }: SessionListPageProps) {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -192,65 +189,43 @@ export default function SessionListPage({ params }: SessionListPageProps) {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-            pageTitle="Sessions"
-          />
-
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
-            <Card>
-              <CardContent className="py-12 text-center">
-                <h3 className="text-lg font-medium mb-2">Error</h3>
-                <p className="text-muted-foreground">{error}</p>
-              </CardContent>
-            </Card>
-          </main>
-        </div>
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <h3 className="text-lg font-medium mb-2">Error</h3>
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Header
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          pageTitle="Sessions"
+    <div className="p-3 sm:p-4 md:p-6">
+      {loading ? (
+        <div className="space-y-4 sm:space-y-6">
+          <div className="h-6 sm:h-8 bg-muted rounded animate-pulse" />
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    <div className="h-4 bg-muted rounded animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : classData ? (
+        <SessionList
+          classData={classData}
+          sessions={sessions}
+          classId={classId}
         />
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 sm:p-4 md:p-6">
-          {loading ? (
-            <div className="space-y-4 sm:space-y-6">
-              <div className="h-6 sm:h-8 bg-muted rounded animate-pulse" />
-              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <div className="space-y-3">
-                        <div className="h-4 bg-muted rounded animate-pulse" />
-                        <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-                        <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          ) : classData ? (
-            <SessionList
-              classData={classData}
-              sessions={sessions}
-              classId={classId}
-            />
-          ) : null}
-        </main>
-      </div>
+      ) : null}
     </div>
   );
 }

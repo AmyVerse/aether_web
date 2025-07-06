@@ -1,11 +1,11 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useCachedSession } from "@/hooks/useSessionCache";
 import { FaCloudSun, FaMoon, FaSun } from "react-icons/fa";
 
 export default function TeacherSalutation() {
-  const { data: session } = useSession();
-  const fullName = session?.user?.name || "Teacher";
+  const { userName } = useCachedSession();
+  const fullName = userName || "Teacher";
   const firstName = fullName.split(" ")[0]; // Get only the first name
 
   const getGreeting = () => {
@@ -32,7 +32,7 @@ export default function TeacherSalutation() {
   });
 
   return (
-    <div className="bg-gradient-to-tl from-gray-600 to-gray-800 text-white p-6 rounded-xl">
+    <div className="bg-gradient-to-tl from-gray-600 z-0 to-gray-800 text-white p-6 rounded-xl">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-2">
