@@ -123,12 +123,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </button>
 
           {/* Search bar */}
-          <div className="relative w-auto">
-            <div className="flex items-center bg-gray-100 border border-gray-300 rounded-lg px-4 py-2 sm:w-80">
+          <div className="relative hidden sm:block w-auto">
+            <div className="flex items-center bg-gray-100 border border-gray-300 rounded-lg px-4 py-2 w-40 sm:w-60 md:w-80">
               <FaSearch className="w-4 h-4 text-gray-500 mr-3" />
               <input
                 type="text"
-                placeholder="Search task"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-transparent text-sm text-gray-700 placeholder-gray-500 focus:outline-none flex-1"
@@ -157,7 +157,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
             {/* Messages dropdown */}
             {showMessages && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
                 <div className="px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-gray-900">Messages</h3>
                 </div>
@@ -220,7 +220,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
             {/* Notifications dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
                 <div className="px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-gray-900">Notifications</h3>
                 </div>
@@ -272,11 +272,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
             {/* Profile dropdown */}
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white rounded-xl shadow-xl border border-gray-300 py-2 z-50">
                 {/* Profile Card */}
                 <div className="px-4 py-4">
-                  <div className="flex items-center gap-5 mb-4">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-violet-500 flex items-center justify-center">
+                  <div className="flex items-center gap-3 sm:gap-5 mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-violet-500 flex items-center justify-center">
                       {user?.image ? (
                         <Image
                           src={user.image}
@@ -286,16 +286,16 @@ export default function Header({ onMenuClick }: HeaderProps) {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-md font-medium text-white">
+                        <span className="text-sm sm:text-md font-medium text-white">
                           {getUserInitials(user?.name)}
                         </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-lg font-semibold text-gray-900 truncate">
+                      <div className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                         {user?.name || "User"}
                       </div>
-                      <div className="text-sm text-gray-500 truncate">
+                      <div className="text-xs sm:text-sm text-gray-500 truncate">
                         {user?.email || "user@example.com"}
                       </div>
                       <div className="text-xs bg-blue-100 rounded-md text-blue-600 w-fit p-1 font-medium mt-2">

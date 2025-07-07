@@ -20,7 +20,7 @@ export default function TeacherSalutation() {
         text: "Good Afternoon",
         icon: <FaCloudSun className="text-orange-500" />,
       };
-    return { text: "Good Evening", icon: <FaMoon className="text-white" /> };
+    return { text: "Good Evening", icon: <FaMoon className="text-gray-500"/> };
   };
 
   const greeting = getGreeting();
@@ -32,20 +32,25 @@ export default function TeacherSalutation() {
   });
 
   return (
-    <div className="bg-gradient-to-tl from-gray-600 z-0 to-gray-800 text-white p-6 rounded-xl">
+    <div className="bg-gradient-to-r from-indigo-50 via-white to-purple-50 p-6 rounded-xl border border-indigo-100/50 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             {greeting.icon}
-            <h1 className="text-2xl font-bold">
-              {greeting.text}, Prof. {firstName}!
-            </h1>
+            <p className="text-md text-indigo-600 font-medium">
+              {greeting.text}
+            </p>
           </div>
-          <p className="text-blue-100 sm:hidden block text-lg">{today}</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-purple-700 bg-clip-text text-transparent mb-2">
+            Prof. {firstName}
+          </h1>
+          <p className="text-gray-600 sm:hidden block text-sm font-medium">
+            {today}
+          </p>
         </div>
         <div className="hidden md:block">
           <div className="text-right">
-            <p className="text-blue-100 text-lg">{today}</p>
+            <p className="text-gray-600 text-sm font-medium">{today}</p>
           </div>
         </div>
       </div>

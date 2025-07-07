@@ -206,6 +206,14 @@ export async function PATCH(
         .returning();
     }
 
+    // Update session status to "Completed" when attendance is recorded
+    await db
+      .update(classSessions)
+      .set({
+        status: "Completed",
+      })
+      .where(eq(classSessions.id, resolvedParams.sessionId));
+
     return NextResponse.json({
       success: true,
       data: result[0],

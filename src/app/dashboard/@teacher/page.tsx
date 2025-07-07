@@ -1,29 +1,32 @@
 "use client";
 import MyClasses from "@/components/teacher/my-classes";
 import TeacherSalutation from "@/components/teacher/teacher-salutation";
-import TeacherStats from "@/components/teacher/teacher-stats";
+import TeacherUpcomingClasses from "@/components/teacher/upcoming-classes";
 
 export default function TeacherDashboard() {
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-      <div className="space-y-4 sm:space-y-6 relative">
-        {/* Salutation */}
-        <TeacherSalutation />
+    <div>
+      {/* Page Title - Header-like appearance */}
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-4 md:px-6 lg:px-8 py-4">
+        <h1 className="text-3xl font-semibold font-[poppins] text-gray-900">
+          Dashboard
+        </h1>
+        <p className="text-sm font-[manrope] text-gray-600 mt-1">
+          Welcome to your teaching dashboard
+        </p>
+      </div>
 
-        {/* Stats Row */}
-        <TeacherStats />
+      {/* Main Content */}
+      <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="space-y-4 sm:space-y-6">
+          {/* Salutation */}
+          <TeacherSalutation />
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <MyClasses />
-          </div>
+          {/* Today's Classes */}
+          <TeacherUpcomingClasses />
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Additional widgets can go here */}
-          </div>
+          {/* My Classes */}
+          <MyClasses />
         </div>
       </div>
     </div>

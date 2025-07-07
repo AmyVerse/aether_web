@@ -1,36 +1,36 @@
 "use client";
-
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ContentLoader from "@/components/ui/content-loader";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { useToast } from "@/hooks/useToast";
 import { useEffect, useState } from "react";
 import {
-  FaBookOpen,
+  FaCalendarDay,
   FaClock,
   FaEye,
   FaMapMarkerAlt,
   FaPlus,
 } from "react-icons/fa";
-import AddClassModal from "./add-class-modal";
 
 interface TeacherClass {
   id: string;
   subject_name: string;
   subject_code: string;
-  branch: string;
-  section: string;
+  branch: string | null;
+  section: string | null;
   day: string;
   time_slot: string;
   room_number: string;
+  academic_year: string;
+  semester_type: string;
 }
 
-interface ProcessedClass extends TeacherClass {
+interface TodayClass extends TeacherClass {
   subject_display: string;
   formatted_time: string;
   class_location: string;
   class_group: string | null;
+  time_sort: number;
 }
 
 interface TeacherClassesResponse {
@@ -38,80 +38,90 @@ interface TeacherClassesResponse {
   data: TeacherClass[];
 }
 
-interface MyClassesProps {
-  fullView?: boolean;
-}
-
-export default function MyClasses({ fullView = false }: MyClassesProps) {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [classes, setClasses] = useState<ProcessedClass[]>([]);
+export default function TeacherUpcomingClasses() {
+  const [classes, setClasses] = useState<TodayClass[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentDay, setCurrentDay] = useState<string>("");
   const { sessionData } = useCachedSession();
   const { showError, showSuccess } = useToast();
 
-  // Fetch teacher's classes from API
   useEffect(() => {
-    fetchTeacherClasses();
+    const fetchTodayClasses = async () => {
+      if (!sessionData?.user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch("/api/teacher/classes");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch teacher classes");
+        }
+
+        const result: TeacherClassesResponse = await response.json();
+
+        if (result.success) {
+          // Get current day name
+          const today = new Date();
+          const dayNames = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          const currentDay = dayNames[today.getDay()];
+          setCurrentDay(currentDay);
+
+          // Filter classes for today and process them
+          const todayClasses = result.data
+            .filter((classItem) => classItem.day === currentDay)
+            .map((classItem): TodayClass => {
+              const timeSlot = classItem.time_slot;
+              const [startTime] = timeSlot.split("-");
+              const [hour, minute] = startTime.split(":").map(Number);
+
+              // Convert to 12-hour format
+              const period = hour >= 12 ? "PM" : "AM";
+              const displayHour =
+                hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+              const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+
+              const classTimeInMinutes = hour * 60 + minute;
+
+              return {
+                ...classItem,
+                subject_display: classItem.subject_name,
+                formatted_time: formattedTime,
+                time_sort: classTimeInMinutes,
+                class_location: classItem.room_number,
+                class_group:
+                  classItem.branch && classItem.section
+                    ? `${classItem.branch} : ${classItem.section}`
+                    : null,
+              };
+            })
+            .sort((a, b) => a.time_sort - b.time_sort);
+
+          setClasses(todayClasses);
+        } else {
+          throw new Error("API returned error");
+        }
+      } catch (err) {
+        console.error("Error fetching today's classes:", err);
+        setError(err instanceof Error ? err.message : "Failed to load classes");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTodayClasses();
   }, [sessionData]);
-
-  const fetchTeacherClasses = async () => {
-    if (!sessionData?.user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await fetch("/api/teacher/classes");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch teacher classes");
-      }
-
-      const result: TeacherClassesResponse = await response.json();
-
-      if (result.success) {
-        // Process classes similar to upcoming classes
-        const processedClasses = result.data.map(
-          (classItem): ProcessedClass => {
-            const timeSlot = classItem.time_slot;
-            const [startTime] = timeSlot.split("-");
-            const [hour, minute] = startTime.split(":").map(Number);
-
-            // Convert to 12-hour format
-            const period = hour >= 12 ? "PM" : "AM";
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-
-            return {
-              ...classItem,
-              subject_display: classItem.subject_name,
-              formatted_time: formattedTime,
-              class_location: classItem.room_number,
-              class_group:
-                classItem.branch && classItem.section
-                  ? `${classItem.branch} : ${classItem.section}`
-                  : null,
-            };
-          },
-        );
-
-        setClasses(processedClasses);
-      } else {
-        throw new Error("API returned error");
-      }
-    } catch (err) {
-      console.error("Error fetching teacher classes:", err);
-      showError(err instanceof Error ? err.message : "Failed to load classes");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClassAdded = () => {
-    // Refresh the classes list after adding a new class
-    fetchTeacherClasses();
-  };
 
   const handleViewDetails = (classId: string) => {
     // Navigate to specific class detail using nanoid
@@ -129,7 +139,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
         body: JSON.stringify({
           date: today,
           start_time: currentTime,
-          notes: "Session created from classes overview",
+          notes: "Session created from today's classes",
         }),
       });
 
@@ -152,8 +162,8 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <FaBookOpen className="w-5 h-5 text-green-600" />
-            My Classes
+            <FaCalendarDay className="w-5 h-5 text-blue-600" />
+            Today's Classes
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -163,36 +173,37 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     );
   }
 
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FaCalendarDay className="w-5 h-5 text-blue-600" />
+            Today's Classes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="text-red-500 text-sm mb-2">⚠️ Error</div>
+            <p className="text-gray-600 text-sm">{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-4 sm:gap-0">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FaBookOpen className="w-5 h-5 text-green-600" />
-            My Classes
+        <CardTitle className="text-lg flex items-center gap-2">
+          <FaCalendarDay className="w-5 h-5 text-blue-600" />
+          Today's Classes
+          {currentDay && (
             <span className="text-sm font-normal text-gray-500">
-              • {classes.length} {classes.length === 1 ? "class" : "classes"}
+              • {currentDay}
             </span>
-          </CardTitle>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => (window.location.href = "/dashboard/class")}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 text-sm font-medium rounded-lg transition-colors duration-200"
-            >
-              <FaEye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">View All</span>
-              <span className="sm:hidden">All</span>
-            </button>
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm flex-1 sm:flex-initial"
-            >
-              <FaPlus className="w-3.5 h-3.5 mr-2" />
-              <span className="hidden sm:inline">Add Class</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-          </div>
-        </div>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -207,14 +218,9 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
                 >
                   <div className="flex-1">
                     <div className="mb-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900 text-lg">
-                          {classItem.subject_display}
-                        </h4>
-                        <div className="bg-green-50 text-green-700 px-2 py-1 rounded-md text-xs font-medium">
-                          {classItem.day}
-                        </div>
-                      </div>
+                      <h4 className="font-semibold text-gray-900 text-lg mb-1">
+                        {classItem.subject_display}
+                      </h4>
                       {classItem.class_group && (
                         <p className="text-sm text-gray-600 font-medium mb-2">
                           {classItem.class_group}
@@ -246,7 +252,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
                     </button>
                     <button
                       onClick={() => handleCreateSession(classItem.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                     >
                       <FaPlus className="w-3.5 h-3.5" />
                       Session
@@ -256,33 +262,19 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
               ))
             ) : (
               <div className="text-center py-12 w-full">
-                <div className="text-6xl mb-4">📚</div>
+                <div className="text-6xl mb-4">🎉</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Classes Assigned
+                  No Classes Today
                 </h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Get started by adding your first class to begin teaching.
+                <p className="text-gray-600 text-sm">
+                  Enjoy your free day! You have no classes scheduled for{" "}
+                  {currentDay.toLowerCase()}.
                 </p>
-                <Button
-                  onClick={() => setIsAddModalOpen(true)}
-                  variant="outline"
-                >
-                  <FaPlus className="mr-2" />
-                  Add Your First Class
-                </Button>
               </div>
             )}
           </div>
         </div>
       </CardContent>
-
-      <AddClassModal
-        isOpen={isAddModalOpen}
-        onCloseAction={() => {
-          setIsAddModalOpen(false);
-          handleClassAdded();
-        }}
-      />
     </Card>
   );
 }

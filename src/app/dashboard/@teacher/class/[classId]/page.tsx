@@ -1,6 +1,8 @@
 "use client";
 import ClassDetailView from "@/components/teacher/class-detail-view";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { FaArrowLeft } from "react-icons/fa";
 
 interface PageProps {
   params: Promise<{
@@ -39,7 +41,7 @@ export default function ClassDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+    <div className="h-screen">
       {classId && <ClassDetailView classId={classId} />}
     </div>
   );

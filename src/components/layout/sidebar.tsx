@@ -170,10 +170,10 @@ export default function Sidebar({
           <div className="text-center">
             {/* Mobile always shows full branding */}
             <div className="md:hidden">
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent tracking-tight">
+              <h1 className="text-2xl font-[manrope] md:text-3xl font-bold bg-gray-800 bg-clip-text text-transparent tracking-tight">
                 Aether
               </h1>
-              <p className="text-sm font-medium text-gray-500 mt-1 tracking-wide">
+              <p className="text-sm font-[manrope] font-medium text-gray-500 mt-1 tracking-wide">
                 IIIT NAGPUR
               </p>
             </div>

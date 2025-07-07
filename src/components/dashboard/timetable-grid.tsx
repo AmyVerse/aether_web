@@ -10,13 +10,6 @@ import {
   generateAllRoomsCSV,
   generateSingleRoomCSV,
 } from "@/utils/timetableExport";
-import {
-  createTimetableEntries,
-  mapRoomsToIds,
-  mapSubjectsToIds,
-  parseGridCSV,
-  validateEntries,
-} from "@/utils/timetableImport";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FaChevronDown,
@@ -195,7 +188,7 @@ export default function TimetableGrid({
     );
   };
 
-  // Handle file upload (CSV/Excel grid format)
+  // Handle file upload (CSV/Excel grid format) - UI ONLY
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -211,115 +204,14 @@ export default function TimetableGrid({
       return;
     }
 
-    try {
-      setLoading(true);
+    // TODO: Implement CSV parsing and import logic
+    showSuccess("CSV import feature coming soon! File received: " + file.name);
 
-      // Read file content
-      const content = await readFileContent(file);
-
-      // Parse the grid format CSV
-      const parseResult = parseGridCSV(content);
-
-      if (!parseResult.success) {
-        showError(parseResult.message);
-        return;
-      }
-
-      if (!parseResult.entries || parseResult.entries.length === 0) {
-        showError("No timetable entries found in the file");
-        return;
-      }
-
-      // Map room numbers to IDs
-      const { entries: roomMappedEntries, unmappedRooms } = await mapRoomsToIds(
-        parseResult.entries,
-        roomsList,
-      );
-
-      // Map course codes to subject IDs
-      const { entries: subjectMappedEntries, unmappedSubjects } =
-        await mapSubjectsToIds(roomMappedEntries, subjectsList);
-
-      // Validate entries
-      const { valid: validEntries, invalid: invalidEntries } =
-        validateEntries(subjectMappedEntries);
-
-      // Show detailed feedback
-      const feedbackMessages: string[] = [];
-
-      if (unmappedRooms.length > 0) {
-        feedbackMessages.push(
-          `⚠️ Unmapped rooms (${unmappedRooms.length}): ${unmappedRooms.join(", ")}`,
-        );
-      }
-
-      if (unmappedSubjects.length > 0) {
-        feedbackMessages.push(
-          `⚠️ Unmapped subjects (${unmappedSubjects.length}): ${unmappedSubjects.join(", ")}`,
-        );
-      }
-
-      if (invalidEntries.length > 0) {
-        feedbackMessages.push(
-          `⚠️ Invalid entries found: ${invalidEntries.length}`,
-        );
-      }
-
-      // Show warnings if any
-      if (feedbackMessages.length > 0) {
-        feedbackMessages.forEach((msg) => showError(msg));
-      }
-
-      if (validEntries.length === 0) {
-        showError("No valid entries to import");
-        return;
-      }
-
-      // Create timetable entries
-      const timetableEntries = createTimetableEntries(
-        validEntries,
-        academicYear,
-        semesterType,
-      );
-
-      // Import to database
-      const response = await fetch("/api/editor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "bulk-import-timetable",
-          data: {
-            academic_year: academicYear,
-            semester_type: semesterType,
-            entries: timetableEntries,
-          },
-        }),
-      });
-
-      if (response.ok) {
-        showSuccess(
-          `✅ Successfully imported ${validEntries.length} timetable entries! ${unmappedRooms.length + unmappedSubjects.length > 0 ? `(${unmappedRooms.length + unmappedSubjects.length} items couldn't be mapped)` : ""}`,
-        );
-        fetchTimetableData(); // Refresh the grid
-      } else {
-        const errorData = await response.json();
-        showError(errorData.error || "Failed to import timetable");
-      }
-    } catch (error) {
-      showError(
-        `Import failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    } finally {
-      setLoading(false);
-
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
+    // Reset file input
+    event.target.value = "";
   };
 
-  // Read file content as text
+  // Read file content as text (kept for future implementation)
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
