@@ -1,5 +1,6 @@
 "use client";
 
+import { getAcademicSession } from "@/lib/getAcademicSession";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 
@@ -31,6 +32,7 @@ export function TimetableEntryModal({
   onEntryAddedAction,
   prefilledData,
 }: TimetableEntryModalProps) {
+  const autoSession = getAcademicSession();
   const [formData, setFormData] = useState({
     subjectId: "",
     roomId: "",
@@ -38,8 +40,9 @@ export function TimetableEntryModal({
     section: "",
     day: prefilledData?.day || "",
     timeSlot: "",
-    academicYear: "2024-25",
-    semesterType: "odd",
+    academicYear: autoSession.academicYear,
+    semesterType: autoSession.semesterType,
+    semester: 1,
   });
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -69,7 +72,7 @@ export function TimetableEntryModal({
     }
   }, [isOpen]);
 
-  // Update form when prefilled data changes
+  // Update form when prefilled data changes or when modal opens (auto-detect year/sem)
   useEffect(() => {
     if (prefilledData) {
       setFormData((prev) => ({
@@ -78,7 +81,15 @@ export function TimetableEntryModal({
         timeSlot: prefilledData.timeSlot || "",
       }));
     }
-  }, [prefilledData]);
+    if (isOpen) {
+      const auto = getAcademicSession();
+      setFormData((prev) => ({
+        ...prev,
+        academicYear: auto.academicYear,
+        semesterType: auto.semesterType,
+      }));
+    }
+  }, [prefilledData, isOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -148,6 +159,7 @@ export function TimetableEntryModal({
           time_slot: formData.timeSlot,
           academic_year: formData.academicYear,
           semester_type: formData.semesterType,
+          semester: formData.semester,
         }),
       });
 
@@ -157,6 +169,7 @@ export function TimetableEntryModal({
       }
 
       // Reset form and close modal
+      const auto = getAcademicSession();
       setFormData({
         subjectId: "",
         roomId: "",
@@ -164,9 +177,33 @@ export function TimetableEntryModal({
         section: "",
         day: prefilledData?.day || "",
         timeSlot: prefilledData?.timeSlot || "",
-        academicYear: "2024-25",
-        semesterType: "odd",
+        academicYear: auto.academicYear,
+        semesterType: auto.semesterType,
+        semester: 1,
       });
+      <div>
+        <label
+          htmlFor="semester"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Semester *
+        </label>
+        <select
+          id="semester"
+          name="semester"
+          value={formData.semester}
+          onChange={handleChange}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Select</option>
+          {[...Array(8)].map((_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {i + 1}
+            </option>
+          ))}
+        </select>
+      </div>;
       setSubjectFilter("");
       setRoomFilter("");
       setShowSubjectDropdown(false);

@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const {
       academic_year,
       semester_type,
+      semester,
       room_id,
       subject_id,
       branch,
@@ -152,6 +153,8 @@ export async function POST(request: NextRequest) {
       .values({
         academic_year,
         semester_type: semester_type as any,
+        semester:
+          semester !== undefined && semester !== "" ? Number(semester) : null,
         room_id,
         subject_id: subject_id || null,
         branch: (branch as any) || null,
@@ -192,7 +195,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, subject_id, branch, section, notes, color_code } = body;
+    const { id, subject_id, branch, section, notes, color_code, semester } =
+      body;
 
     // Validate required fields
     if (!id) {
@@ -226,6 +230,12 @@ export async function PUT(request: NextRequest) {
         notes: notes || null,
         color_code: color_code || null,
         updated_at: new Date(),
+        ...(semester !== undefined
+          ? {
+              semester:
+                semester === null || semester === "" ? null : Number(semester),
+            }
+          : {}),
       })
       .where(eq(timetableEntries.id, id))
       .returning();

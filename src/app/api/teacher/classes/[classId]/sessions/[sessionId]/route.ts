@@ -59,3 +59,55 @@ export async function GET(
     );
   }
 }
+
+// PATCH: Update a session
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ classId: string; sessionId: string }> },
+) {
+  try {
+    const { classId, sessionId } = await params;
+    const { date, start_time, end_time, notes, status } = await request.json();
+    // Update session
+    const updated = await db
+      .update(classSessions)
+      .set({ date, start_time, end_time, notes, status })
+      .where(eq(classSessions.id, sessionId))
+      .returning();
+    if (!updated.length) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: updated[0] });
+  } catch (error) {
+    console.error("Error updating session:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE: Delete a session
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ classId: string; sessionId: string }> },
+) {
+  try {
+    const { classId, sessionId } = await params;
+    // Delete session
+    const deleted = await db
+      .delete(classSessions)
+      .where(eq(classSessions.id, sessionId))
+      .returning();
+    if (!deleted.length) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting session:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}

@@ -1,6 +1,5 @@
 "use client";
 import CalendarWidget from "@/components/dashboard/calendar-widget";
-import UpcomingClasses from "@/components/dashboard/upcoming-classes";
 
 export default function StudentDashboard() {
   return (
@@ -9,7 +8,6 @@ export default function StudentDashboard() {
         {/* Main Content Area */}
         <div className="lg:col-span-8 space-y-6">
           {/* Classes */}
-          <UpcomingClasses />
         </div>
 
         {/* Sidebar */}

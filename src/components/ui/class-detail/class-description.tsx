@@ -124,7 +124,6 @@ export default function ClassDescription({
         </div>
       </div>
 
-      {/* Quick Info Grid */}
       <div className="p-3 sm:p-4 md:p-6">
         {/* Detailed Information Card */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-300">
@@ -133,13 +132,13 @@ export default function ClassDescription({
             Class Information
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             {/* Academic Details */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                 Academic Details
               </h3>
-              <div className="space-y-3">
+              <div className="grid sm:grid-cols-2">
                 <div className="flex items-center gap-3">
                   <FaGraduationCap className="text-indigo-600 w-4 h-4" />
                   <div>
@@ -163,11 +162,11 @@ export default function ClassDescription({
             </div>
 
             {/* Schedule Details */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                 Schedule Details
               </h3>
-              <div className="space-y-3">
+              <div className="grid sm:grid-cols-3">
                 <div className="flex items-center gap-3">
                   <FaCalendarAlt className="text-blue-600 w-4 h-4" />
                   <div>

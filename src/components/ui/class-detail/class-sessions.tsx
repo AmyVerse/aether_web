@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { useState } from "react";
+import Dialog from "@/components/ui/dialog";
 import { FaCalendarAlt, FaEdit, FaPlus } from "react-icons/fa";
 
 interface ClassSession {
@@ -27,9 +28,15 @@ export default function ClassSessions({
   onSessionsChangeAction,
 }: ClassSessionsProps) {
   const { showSuccess, showError } = useToast();
-  const [editingSession, setEditingSession] = useState<ClassSession | null>(
-    null,
-  );
+  const [editingSession, setEditingSession] = useState<ClassSession | null>(null);
+  const [editForm, setEditForm] = useState({
+    date: "",
+    start_time: "",
+    end_time: "",
+    notes: "",
+    status: "Scheduled",
+  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sort sessions by date in descending order (newest first)
   const sortedSessions = [...classSessions].sort(
@@ -67,8 +74,62 @@ export default function ClassSessions({
 
   const handleEditSession = (session: ClassSession) => {
     setEditingSession(session);
-    // TODO: Implement edit session modal
-    console.log("Edit session:", session);
+    setEditForm({
+      date: session.date,
+      start_time: session.start_time,
+      end_time: session.end_time || "",
+      notes: session.notes || "",
+      status: session.status,
+    });
+  };
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditFormSubmit = async () => {
+    if (!editingSession) return;
+    try {
+      const patchBody = {
+        ...editForm,
+        end_time: null, // Always send null for end_time
+      };
+      const res = await fetch(`/api/teacher/classes/${classId}/sessions/${editingSession.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patchBody),
+      });
+      if (res.ok) {
+        showSuccess("Session updated!");
+        setEditingSession(null);
+        onSessionsChangeAction();
+      } else {
+        const err = await res.json();
+        showError(err.error || "Failed to update session");
+      }
+    } catch (e) {
+      showError("Error updating session");
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!editingSession) return;
+    try {
+      const res = await fetch(`/api/teacher/classes/${classId}/sessions/${editingSession.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        showSuccess("Session deleted!");
+        setEditingSession(null);
+        setShowDeleteConfirm(false);
+        onSessionsChangeAction();
+      } else {
+        const err = await res.json();
+        showError(err.error || "Failed to delete session");
+      }
+    } catch (e) {
+      showError("Error deleting session");
+    }
   };
 
   const handleViewSession = (sessionId: string) => {
@@ -78,8 +139,6 @@ export default function ClassSessions({
   const formatCreatedTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -106,8 +165,108 @@ export default function ClassSessions({
     return `${day} ${month}, ${year} (${weekday})`;
   };
 
+  // Edit Session Modal (moved outside return, visually larger, no End Time field)
+  const editSessionModal = editingSession && (
+    <Dialog
+      isOpen={!!editingSession}
+      onClose={() => setEditingSession(null)}
+      title="Edit Session"
+      showActions={false}
+    >
+      <form
+        className="space-y-5 p-2 sm:p-6"
+        onSubmit={e => {
+          e.preventDefault();
+          handleEditFormSubmit();
+        }}
+      >
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <input
+            type="date"
+            name="date"
+            value={editForm.date}
+            onChange={handleEditFormChange}
+            className="w-full border rounded-lg px-3 py-2 text-base"
+            required
+          />
+        </div>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
+            <input
+              type="time"
+              name="start_time"
+              value={editForm.start_time}
+              onChange={handleEditFormChange}
+              className="w-full border rounded-lg px-3 py-2 text-base"
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+          <select
+            name="status"
+            value={editForm.status}
+            onChange={handleEditFormChange}
+            className="w-full border rounded-lg px-3 py-2 text-base"
+          >
+            <option value="Scheduled">Scheduled</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+          <textarea
+            name="notes"
+            value={editForm.notes}
+            onChange={handleEditFormChange}
+            className="w-full border rounded-lg px-3 py-2 text-base"
+            rows={3}
+          />
+        </div>
+        <div className="flex gap-2 mt-6">
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-base"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditingSession(null)}
+            className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-base"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-base"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+
   return (
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-300">
+    <>
+      {editSessionModal}
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-300">
+      {/* Delete Confirm Dialog */}
+      <Dialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Session?"
+        description="Are you sure you want to delete this session? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="destructive"
+        onConfirm={handleDeleteSession}
+      />
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <FaCalendarAlt className="text-blue-600" />
@@ -128,81 +287,73 @@ export default function ClassSessions({
           <h3 className="text-gray-500 text-lg font-medium mb-2">
             No sessions created
           </h3>
-          <p className="text-gray-400 text-sm mb-6">
-            Create your first session to start taking attendance and managing
-            your class
+          <p className="text-gray-400 text-xs sm:text-sm mb-6 text-center">
+            Create your first session to start taking attendance and managing your class
           </p>
           <Button
             onClick={handleCreateSession}
             variant="outline"
-            className="px-6"
+            className="px-4 sm:px-6 w-full sm:w-auto"
           >
             <FaPlus className="mr-2" />
             Create First Session
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {sortedSessions.map((session) => (
             <div
               key={session.id}
-              className="p-4 border border-gray-300 rounded-lg"
+              className="p-3 sm:p-4 border border-gray-300 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
-                    <FaCalendarAlt className="text-blue-600 w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">
-                      {formatDate(session.date)}
-                    </h4>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                      <span className="font-medium">
-                        {session.start_time}
-                        {session.end_time && ` - ${session.end_time}`}
-                      </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(session.status)}`}
-                      >
-                        {session.status}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        Created: {formatCreatedTime(session.created_at)}
-                      </span>
-                    </div>
-
-                    {session.notes && (
-                      <p className="text-sm text-gray-500 bg-gray-100 p-2 rounded mt-2">
-                        {session.notes}
-                      </p>
-                    )}
-                  </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
+                  <FaCalendarAlt className="text-blue-600 w-3.5 h-3.5 sm:w-5 sm:h-5" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => handleEditSession(session)}
-                    variant="outline"
-                    className="hover:bg-gray-100 hover:border-gray-400 text-sm px-3 py-1"
-                  >
-                    <FaEdit className="w-3 h-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => handleViewSession(session.id)}
-                    variant="outline"
-                    className="hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
-                  >
-                    {session.status === "Completed"
-                      ? "View Attendance"
-                      : "Take Attendance"}
-                  </Button>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base truncate">
+                    {formatDate(session.date)}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">
+                    <span className="font-medium">
+                      {formatCreatedTime(session.created_at)}
+                    </span>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(session.status)}`}
+                    >
+                      {session.status}
+                    </span>
+                  </div>
+                  {session.notes && (
+                    <p className="text-xs sm:text-sm text-gray-500 bg-gray-100 p-2 w-fit rounded mt-1 sm:mt-2 truncate">
+                      {session.notes}
+                    </p>
+                  )}
                 </div>
+              </div>
+              <div className="flex flex-row flex-wrap gap-2 sm:flex-col sm:items-end min-w-[120px]">
+                <Button
+                  onClick={() => handleEditSession(session)}
+                  variant="outline"
+                  className="hover:bg-gray-100 hover:border-gray-400 text-xs sm:text-sm px-2 sm:px-3 py-1"
+                >
+                  <FaEdit className="w-3 h-3 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleViewSession(session.id)}
+                  variant="outline"
+                  className="hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-xs sm:text-sm px-2 sm:px-3 py-1"
+                >
+                  {session.status === "Completed"
+                    ? "View Attendance" : "Take Attendance"}
+                </Button>
               </div>
             </div>
           ))}
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -1,8 +1,13 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import { classSessions, classTeachers, teachers } from "@/db/schema";
+import {
+  classSessions,
+  classTeachers,
+  teachers,
+  timetableEntries,
+} from "@/db/schema";
 import { authenticateTeacher } from "@/utils/auth-helpers";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -85,6 +90,7 @@ export async function POST(
   }
 }
 
+// GET: List sessions for a class, filtered by session context (academicYear, semesterType)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ classId: string }> },
@@ -95,7 +101,43 @@ export async function GET(
 
     const resolvedParams = await params;
 
-    // Get sessions - teacher is already authenticated, no need to verify class ownership
+    // Get session context from query params
+    const { searchParams } = new URL(request.url);
+    const academicYear = searchParams.get("academicYear");
+    const semesterType = searchParams.get("semesterType");
+
+    // Build where clauses for session context
+    const whereClauses = [eq(classTeachers.id, resolvedParams.classId)];
+    if (academicYear) {
+      whereClauses.push(eq(timetableEntries.academic_year, academicYear));
+    }
+    if (semesterType && (semesterType === "odd" || semesterType === "even")) {
+      whereClauses.push(
+        eq(timetableEntries.semester_type, semesterType as "odd" | "even"),
+      );
+    }
+
+    // Join classTeachers and timetableEntries to filter by session context
+    const teacherClass = await db
+      .select({
+        id: classTeachers.id,
+        timetable_entry_id: classTeachers.timetable_entry_id,
+      })
+      .from(classTeachers)
+      .innerJoin(
+        timetableEntries,
+        eq(classTeachers.timetable_entry_id, timetableEntries.id),
+      )
+      .where(and(...whereClauses));
+
+    if (!teacherClass.length) {
+      return NextResponse.json(
+        { error: "Class not found in this session context" },
+        { status: 404 },
+      );
+    }
+
+    // Get sessions for this teacher_class_id
     const sessions = await db
       .select({
         id: classSessions.id,

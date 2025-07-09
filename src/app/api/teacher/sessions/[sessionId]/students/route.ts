@@ -116,22 +116,31 @@ export async function PATCH(
     }
 
     const resolvedParams = await params;
-    const { student_id, attendance_status } = await request.json();
+    const body = await request.json();
+    const updates = body.updates || [];
 
-    if (!student_id || !attendance_status) {
+    if (!Array.isArray(updates) || updates.length === 0) {
       return NextResponse.json(
-        { error: "Student ID and attendance status are required" },
+        { error: "Updates array is required" },
         { status: 400 },
       );
     }
 
-    // Validate attendance status
+    // Validate all updates
     const validStatuses = ["Present", "Absent", "Leave"];
-    if (!validStatuses.includes(attendance_status)) {
-      return NextResponse.json(
-        { error: "Invalid attendance status" },
-        { status: 400 },
-      );
+    for (const upd of updates) {
+      if (!upd.student_id || !upd.attendance_status) {
+        return NextResponse.json(
+          { error: "Each update must have student_id and attendance_status" },
+          { status: 400 },
+        );
+      }
+      if (!validStatuses.includes(upd.attendance_status)) {
+        return NextResponse.json(
+          { error: `Invalid attendance status: ${upd.attendance_status}` },
+          { status: 400 },
+        );
+      }
     }
 
     // Get teacher ID from email
@@ -170,41 +179,25 @@ export async function PATCH(
       );
     }
 
-    // Check if attendance record already exists
-    const existingAttendance = await db
-      .select()
-      .from(attendanceRecords)
-      .where(
-        and(
-          eq(attendanceRecords.student_id, student_id),
-          eq(attendanceRecords.session_id, resolvedParams.sessionId),
-        ),
-      )
-      .limit(1);
+    // Use raw SQL for true bulk upsert (PostgreSQL)
+    const now = new Date();
+    // Use the correct table name: attendance_records (plural, as in your schema import)
+    const valueStrings = updates.map(
+      (upd) =>
+        `('${upd.student_id.replace(/'/g, "''")}', '${resolvedParams.sessionId.replace(/'/g, "''")}', '${upd.attendance_status.replace(/'/g, "''")}', '${now.toISOString()}')`,
+    );
 
-    let result;
+    const sql = `
+      INSERT INTO attendance_records (student_id, session_id, attendance_status, recorded_at)
+      VALUES ${valueStrings.join(",\n")}
+      ON CONFLICT (student_id, session_id)
+      DO UPDATE SET
+        attendance_status = EXCLUDED.attendance_status,
+        recorded_at = EXCLUDED.recorded_at
+      RETURNING *;
+    `;
 
-    if (existingAttendance.length > 0) {
-      // Update existing attendance record
-      result = await db
-        .update(attendanceRecords)
-        .set({
-          attendance_status,
-          recorded_at: new Date(),
-        })
-        .where(eq(attendanceRecords.id, existingAttendance[0].id))
-        .returning();
-    } else {
-      // Create new attendance record
-      result = await db
-        .insert(attendanceRecords)
-        .values({
-          student_id,
-          session_id: resolvedParams.sessionId,
-          attendance_status,
-        })
-        .returning();
-    }
+    const results = await db.execute(sql);
 
     // Update session status to "Completed" when attendance is recorded
     await db
@@ -216,7 +209,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      data: result[0],
+      data: results,
     });
   } catch (error) {
     console.error("Error updating attendance:", error);

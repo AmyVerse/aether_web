@@ -1,7 +1,7 @@
 import { db } from "@/db/index";
 import { classTeachers, rooms, subjects, timetableEntries } from "@/db/schema";
 import { authenticateTeacher } from "@/utils/auth-helpers";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -48,7 +48,22 @@ export async function GET(request: NextRequest) {
     const { teacher, error } = await authenticateTeacher();
     if (error) return error;
 
-    // Get teacher's classes with timetable, subject, and room details in a single query
+    // Get session context from query params
+    const { searchParams } = new URL(request.url);
+    const academicYear = searchParams.get("academicYear");
+    const semesterType = searchParams.get("semesterType");
+
+    // Build filter conditions
+    const conditions = [eq(classTeachers.teacher_id, teacher.id)];
+    if (academicYear)
+      conditions.push(eq(timetableEntries.academic_year, academicYear));
+    if (semesterType && (semesterType === "odd" || semesterType === "even")) {
+      conditions.push(
+        eq(timetableEntries.semester_type, semesterType as "odd" | "even"),
+      );
+    }
+
+    // Get teacher's classes with timetable, subject, and room details in a single query, filtered by session context
     const classTeachersList = await db
       .select({
         id: classTeachers.id,
@@ -61,6 +76,7 @@ export async function GET(request: NextRequest) {
         room_number: rooms.room_number,
         academic_year: timetableEntries.academic_year,
         semester_type: timetableEntries.semester_type,
+        notes: timetableEntries.notes, // <-- add this line
       })
       .from(classTeachers)
       .innerJoin(
@@ -69,7 +85,7 @@ export async function GET(request: NextRequest) {
       )
       .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
       .leftJoin(rooms, eq(timetableEntries.room_id, rooms.id))
-      .where(eq(classTeachers.teacher_id, teacher.id));
+      .where(and(...conditions));
 
     return NextResponse.json({
       success: true,

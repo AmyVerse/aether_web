@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (branch) conditions.push(eq(timetableEntries.branch, branch as any));
     if (section) conditions.push(eq(timetableEntries.section, section as any));
     if (semester)
-      conditions.push(eq(timetableEntries.semester_type, semester as any));
+      conditions.push(eq(timetableEntries.semester, Number(semester)));
     if (day) conditions.push(eq(timetableEntries.day, day as any));
     if (time_slot)
       conditions.push(eq(timetableEntries.time_slot, time_slot as any));
@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         semester_type: timetableEntries.semester_type,
         notes: timetableEntries.notes,
         color_code: timetableEntries.color_code,
+        semester: timetableEntries.semester,
         subject_name: subjects.course_name,
         subject_code: subjects.course_code,
         room_number: rooms.room_number,

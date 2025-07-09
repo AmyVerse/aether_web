@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -8,12 +9,11 @@ import {
   text,
   time,
   timestamp,
+  unique,
   uuid,
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-
-import { sql } from "drizzle-orm";
 
 // Enum for Teacher Departments
 export const teacherDepartmentEnum = pgEnum("teacher_department_enum", [
@@ -185,19 +185,25 @@ export const classSessions = pgTable("class_sessions", {
 });
 
 // Attendance Records Table
-export const attendanceRecords = pgTable("attendance_record", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  student_id: uuid("student_id")
-    .notNull()
-    .references(() => students.id, { onDelete: "cascade" }),
-  session_id: varchar("session_id", { length: 9 })
-    .notNull()
-    .references(() => classSessions.id, { onDelete: "cascade" }),
-  attendance_status: attendanceStatusEnum("attendance_status")
-    .notNull()
-    .default("Present"),
-  recorded_at: timestamp("recorded_at", { withTimezone: true }).defaultNow(),
-});
+export const attendanceRecords = pgTable(
+  "attendance_records",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    student_id: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    session_id: varchar("session_id", { length: 9 })
+      .notNull()
+      .references(() => classSessions.id, { onDelete: "cascade" }),
+    attendance_status: attendanceStatusEnum("attendance_status")
+      .notNull()
+      .default("Present"),
+    recorded_at: timestamp("recorded_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    unique("unique_student_session").on(table.student_id, table.session_id),
+  ],
+);
 
 // Holiday Table
 export const holidays = pgTable("holiday", {
@@ -263,8 +269,9 @@ export const timetableEntries = pgTable("timetable_entries", {
   id: uuid("id").defaultRandom().primaryKey(),
 
   // Academic details
-  academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2024-25"
+  academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2024-2025"
   semester_type: semesterTypeEnum("semester_type").notNull(), // "odd" or "even"
+  semester: integer("semester"), // 1-8
 
   // References with IDs
   room_id: uuid("room_id")

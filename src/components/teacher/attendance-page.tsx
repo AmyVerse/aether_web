@@ -169,26 +169,22 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
 
     setAutoSaving(true);
     try {
-      // Save each changed student individually using the new API
-      const promises = changedStudents.map(async (studentData) => {
-        const response = await fetch(
-          `/api/teacher/sessions/${sessionId}/students`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+      // Send a single PATCH request with all changed students
+      const response = await fetch(
+        `/api/teacher/sessions/${sessionId}/students`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: changedStudents.map((studentData) => ({
               student_id: studentData.student.id,
               attendance_status: studentData.attendance.status,
-            }),
-          },
-        );
-        return response;
-      });
+            })),
+          }),
+        },
+      );
 
-      const responses = await Promise.all(promises);
-      const allSuccessful = responses.every((response) => response.ok);
-
-      if (allSuccessful) {
+      if (response.ok) {
         setStudents((prev) =>
           prev.map((studentData) => ({ ...studentData, hasChanged: false })),
         );
@@ -204,26 +200,23 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   const saveAttendance = async () => {
     setAutoSaving(true);
     try {
-      // Save each student individually using the new API
-      const promises = students.map(async (studentData) => {
-        const response = await fetch(
-          `/api/teacher/sessions/${sessionId}/students`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              student_id: studentData.student.id,
-              attendance_status: studentData.attendance.status,
-            }),
-          },
-        );
-        return response;
-      });
+      // Collect all students to update
+      const changedStudents = students.map((studentData) => ({
+        student_id: studentData.student.id,
+        attendance_status: studentData.attendance.status,
+      }));
 
-      const responses = await Promise.all(promises);
-      const allSuccessful = responses.every((response) => response.ok);
+      // Send a single PATCH request with all students
+      const response = await fetch(
+        `/api/teacher/sessions/${sessionId}/students`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates: changedStudents }),
+        },
+      );
 
-      if (allSuccessful) {
+      if (response.ok) {
         showSuccess("Attendance saved successfully!");
         setStudents((prev) =>
           prev.map((studentData) => ({ ...studentData, hasChanged: false })),
@@ -285,7 +278,8 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header Section - Matching Class Description Style */}
       <div className="bg-white border-b border-gray-200 px-3 sm:px-4 md:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between mb-3">
+        {/* Back to Classes button on its own line */}
+        <div className="mb-2">
           <button
             onClick={goBack}
             className="flex items-center bg-gray-100/50 gap-2 px-3 py-2 text-sm border border-gray-300 hover:border-gray-400 hover:bg-gray-200/50 rounded-lg transition-colors"
@@ -294,9 +288,13 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
             <span className="hidden sm:inline">Back to Classes</span>
             <span className="sm:hidden">Back</span>
           </button>
-
-          {/* Status indicators - moved to header */}
-          <div className="flex flex-col items-end gap-1">
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+          <h1 className="text-3xl font-semibold font-[poppins] text-gray-900">
+            Session Attendance
+          </h1>
+          <div className="flex items-center gap-2">
+            {/* Status indicators */}
             {lastSaved && (
               <p className="text-xs text-green-600 flex items-center gap-1">
                 <FaCheck className="w-3 h-3" />
@@ -315,13 +313,25 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                 Unsaved changes
               </span>
             )}
+            <Button
+              onClick={saveAttendance}
+              disabled={autoSaving || !hasChanges}
+              variant="primary"
+              className="px-3 py-1.5 text-sm ml-2"
+            >
+              {autoSaving ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FaSave className="w-3 h-3 mr-1" />
+                  <span>Save</span>
+                </>
+              )}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-semibold font-[poppins] text-gray-900">
-            Session Attendance
-          </h1>
         </div>
 
         {/* Session Labels - Matching class description style */}
@@ -330,7 +340,11 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
             Session ID: {sessionId}
           </span>
           <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md font-medium text-sm">
-            {new Date(sessionDetails.date).toLocaleDateString()}
+            {new Date(sessionDetails.date).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </span>
           <span className="bg-green-50 text-green-700 px-3 py-1.5 rounded-md font-medium text-sm flex items-center gap-1">
             <FaClock className="w-3 h-3" />
@@ -400,24 +414,6 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                 >
                   All Absent
                 </Button>
-                <Button
-                  onClick={saveAttendance}
-                  disabled={autoSaving || !hasChanges}
-                  variant="primary"
-                  className="px-3 py-1.5 text-sm"
-                >
-                  {autoSaving ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaSave className="w-3 h-3 mr-1" />
-                      <span>Save</span>
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
           </div>
@@ -481,14 +477,14 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                     return (
                       <>
                         {/* Left Column */}
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           {leftColumn.map((studentData) => (
                             <div
                               key={studentData.student.id}
                               onClick={() =>
                                 toggleAttendance(studentData.student.id)
                               }
-                              className={`relative flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
+                              className={`relative flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
                                 studentData.attendance.status === "Present"
                                   ? "border-green-300/60 bg-green-50/80 hover:bg-green-100/80"
                                   : studentData.attendance.status === "Leave"
@@ -497,25 +493,25 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                               } `}
                             >
                               {/* Student info - Left partition design */}
-                              <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-3">
                                 {/* Left partition - Last 3 digits */}
-                                <div className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border border-gray-200/60">
-                                  <div className="text-3xl font-semibold text-gray-900 font-[poppins]">
+                                <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg border border-gray-200/60">
+                                  <div className="text-2xl font-semibold text-gray-900 font-[poppins]">
                                     {studentData.student.roll_number.slice(-3)}
                                   </div>
                                 </div>
 
                                 {/* Vertical divider line */}
-                                <div className="w-px h-12 bg-gray-300/80"></div>
+                                <div className="w-px h-10 bg-gray-300/80"></div>
 
                                 {/* Right side - Full info */}
                                 <div className="flex-1">
                                   {/* Student name */}
-                                  <div className="text-xl text-gray-900 font-medium mb-1">
+                                  <div className="text-base text-gray-900 font-medium mb-0.5">
                                     {studentData.student.name}
                                   </div>
                                   {/* Full roll number */}
-                                  <div className="text-base text-gray-600 font-mono">
+                                  <div className="text-xs text-gray-600 font-mono">
                                     {studentData.student.roll_number}
                                   </div>
                                 </div>
@@ -545,41 +541,8 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                                   )}
                                 </div>
 
-                                {/* Compact status buttons */}
+                                {/* Only L button */}
                                 <div className="flex gap-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateAttendance(
-                                        studentData.student.id,
-                                        "Present",
-                                      );
-                                    }}
-                                    className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-all duration-200 ${
-                                      studentData.attendance.status ===
-                                      "Present"
-                                        ? "bg-green-600 text-white shadow-sm"
-                                        : "bg-gray-200/80 text-gray-600 hover:bg-green-100/80 border border-green-200/40"
-                                    }`}
-                                  >
-                                    P
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateAttendance(
-                                        studentData.student.id,
-                                        "Absent",
-                                      );
-                                    }}
-                                    className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-all duration-200 ${
-                                      studentData.attendance.status === "Absent"
-                                        ? "bg-red-600 text-white shadow-sm"
-                                        : "bg-gray-200/80 text-gray-600 hover:bg-red-100/80 border border-red-200/40"
-                                    }`}
-                                  >
-                                    A
-                                  </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -610,14 +573,14 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                         </div>
 
                         {/* Right Column */}
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           {rightColumn.map((studentData) => (
                             <div
                               key={studentData.student.id}
                               onClick={() =>
                                 toggleAttendance(studentData.student.id)
                               }
-                              className={`relative flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
+                              className={`relative flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
                                 studentData.attendance.status === "Present"
                                   ? "border-green-300/60 bg-green-50/80 hover:bg-green-100/80"
                                   : studentData.attendance.status === "Leave"
@@ -626,25 +589,25 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                               } `}
                             >
                               {/* Student info - Left partition design */}
-                              <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-3">
                                 {/* Left partition - Last 3 digits */}
-                                <div className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border border-gray-200/60">
-                                  <div className="text-3xl font-semibold text-gray-900 font-[poppins]">
+                                <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg border border-gray-200/60">
+                                  <div className="text-2xl font-semibold text-gray-900 font-[poppins]">
                                     {studentData.student.roll_number.slice(-3)}
                                   </div>
                                 </div>
 
                                 {/* Vertical divider line */}
-                                <div className="w-px h-12 bg-gray-300/80"></div>
+                                <div className="w-px h-10 bg-gray-300/80"></div>
 
                                 {/* Right side - Full info */}
                                 <div className="flex-1">
                                   {/* Student name */}
-                                  <div className="text-xl text-gray-900 font-medium mb-1">
+                                  <div className="text-base text-gray-900 font-medium mb-0.5">
                                     {studentData.student.name}
                                   </div>
                                   {/* Full roll number */}
-                                  <div className="text-base text-gray-600 font-mono">
+                                  <div className="text-xs text-gray-600 font-mono">
                                     {studentData.student.roll_number}
                                   </div>
                                 </div>
@@ -674,41 +637,8 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                                   )}
                                 </div>
 
-                                {/* Compact status buttons */}
+                                {/* Only L button */}
                                 <div className="flex gap-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateAttendance(
-                                        studentData.student.id,
-                                        "Present",
-                                      );
-                                    }}
-                                    className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-all duration-200 ${
-                                      studentData.attendance.status ===
-                                      "Present"
-                                        ? "bg-green-600 text-white shadow-sm"
-                                        : "bg-gray-200/80 text-gray-600 hover:bg-green-100/80 border border-green-200/40"
-                                    }`}
-                                  >
-                                    P
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateAttendance(
-                                        studentData.student.id,
-                                        "Absent",
-                                      );
-                                    }}
-                                    className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-all duration-200 ${
-                                      studentData.attendance.status === "Absent"
-                                        ? "bg-red-600 text-white shadow-sm"
-                                        : "bg-gray-200/80 text-gray-600 hover:bg-red-100/80 border border-red-200/40"
-                                    }`}
-                                  >
-                                    A
-                                  </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -744,6 +674,27 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
               )}
             </div>
           </div>
+        </div>
+        {/* Save button at bottom */}
+        <div className="flex justify-center mt-6">
+          <Button
+            onClick={saveAttendance}
+            disabled={autoSaving || !hasChanges}
+            variant="primary"
+            className="px-4 py-2 text-base"
+          >
+            {autoSaving ? (
+              <>
+                <LoadingSpinner size="sm" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <FaSave className="w-4 h-4 mr-1" />
+                <span>Save</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </div>

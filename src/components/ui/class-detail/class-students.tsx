@@ -229,14 +229,10 @@ export default function ClassStudents({
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {classStudent.student.name}
+                      {classStudent.student.roll_number}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {classStudent.student.roll_number} •{" "}
-                      {classStudent.student.email}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Batch: {classStudent.student.batch_year}
+                      {classStudent.student.name}
                     </p>
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ContentLoader from "@/components/ui/content-loader";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { useToast } from "@/hooks/useToast";
+import { useSessionStore } from "@/store/useSessionStore";
 import { useEffect, useState } from "react";
 import {
   FaBookOpen,
@@ -50,9 +51,13 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
   const { showError, showSuccess } = useToast();
 
   // Fetch teacher's classes from API
+
+  const academicYear = useSessionStore((s) => s.academicYear);
+  const semesterType = useSessionStore((s) => s.semesterType);
+
   useEffect(() => {
     fetchTeacherClasses();
-  }, [sessionData]);
+  }, [sessionData, academicYear, semesterType]);
 
   const fetchTeacherClasses = async () => {
     if (!sessionData?.user) {
@@ -62,7 +67,12 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
 
     try {
       setLoading(true);
-      const response = await fetch("/api/teacher/classes");
+      // Pass academicYear and semesterType as query params
+      const params = new URLSearchParams({
+        academicYear,
+        semesterType,
+      });
+      const response = await fetch(`/api/teacher/classes?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch teacher classes");
@@ -163,121 +173,132 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     );
   }
 
+  const addClassModal = (
+    <AddClassModal
+      isOpen={isAddModalOpen}
+      onCloseAction={() => {
+        setIsAddModalOpen(false);
+        handleClassAdded();
+      }}
+    />
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-4 sm:gap-0">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FaBookOpen className="w-5 h-5 text-green-600" />
-            My Classes
-            <span className="text-sm font-normal text-gray-500">
-              • {classes.length} {classes.length === 1 ? "class" : "classes"}
-            </span>
-          </CardTitle>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => (window.location.href = "/dashboard/class")}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 text-sm font-medium rounded-lg transition-colors duration-200"
-            >
-              <FaEye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">View All</span>
-              <span className="sm:hidden">All</span>
-            </button>
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm flex-1 sm:flex-initial"
-            >
-              <FaPlus className="w-3.5 h-3.5 mr-2" />
-              <span className="hidden sm:inline">Add Class</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="w-full">
-          {classes.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {classes.map((classItem) => (
-                <div
-                  key={classItem.id}
-                  className="flex flex-col justify-between p-4 rounded-xl border border-gray-300 bg-white hover:border-gray-400 hover:shadow-md transition-all duration-200 min-h-[200px]"
+    <>
+      {addClassModal}
+      <div>
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-4 sm:gap-0">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FaBookOpen className="w-5 h-5 text-green-600" />
+                My Classes
+                <span className="text-sm font-normal text-gray-500">
+                  • {classes.length}{" "}
+                  {classes.length === 1 ? "class" : "classes"}
+                </span>
+              </CardTitle>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => (window.location.href = "/dashboard/class")}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 text-sm font-medium rounded-lg transition-colors duration-200"
                 >
-                  <div className="flex-1">
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900 text-lg">
-                          {classItem.subject_display}
-                        </h4>
-                        <div className="bg-green-50 text-green-700 px-2 py-1 rounded-md text-xs font-medium">
-                          {classItem.day}
+                  <FaEye className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">View All</span>
+                  <span className="sm:hidden">All</span>
+                </button>
+                <Button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm flex-1 sm:flex-initial"
+                >
+                  <FaPlus className="w-3.5 h-3.5 mr-2" />
+                  <span className="hidden sm:inline">Add Class</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full">
+              {classes.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {classes.map((classItem) => (
+                    <div
+                      key={classItem.id}
+                      className="flex flex-col justify-between p-4 rounded-xl border border-gray-300 bg-white hover:border-gray-400 hover:shadow-md transition-all duration-200 min-h-[200px]"
+                    >
+                      <div className="flex-1">
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900 text-lg">
+                              {classItem.subject_display}
+                            </h4>
+                            <div className="bg-green-50 text-green-700 px-2 py-1 rounded-md text-xs font-medium">
+                              {classItem.day}
+                            </div>
+                          </div>
+                          {classItem.class_group && (
+                            <p className="text-sm text-gray-600 font-medium mb-2">
+                              {classItem.class_group}
+                            </p>
+                          )}
+                          <div className="space-y-1 text-sm text-gray-500">
+                            <div className="flex items-center gap-1.5">
+                              <FaClock className="w-3.5 h-3.5" />
+                              <span className="font-medium">
+                                {classItem.formatted_time}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <FaMapMarkerAlt className="w-3.5 h-3.5" />
+                              <span>{classItem.class_location}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      {classItem.class_group && (
-                        <p className="text-sm text-gray-600 font-medium mb-2">
-                          {classItem.class_group}
-                        </p>
-                      )}
-                      <div className="space-y-1 text-sm text-gray-500">
-                        <div className="flex items-center gap-1.5">
-                          <FaClock className="w-3.5 h-3.5" />
-                          <span className="font-medium">
-                            {classItem.formatted_time}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <FaMapMarkerAlt className="w-3.5 h-3.5" />
-                          <span>{classItem.class_location}</span>
-                        </div>
+
+                      <div className="flex gap-2 flex-col sm:flex-row">
+                        <button
+                          onClick={() => handleViewDetails(classItem.id)}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 text-sm font-medium rounded-lg transition-colors duration-200"
+                        >
+                          <FaEye className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">View Details</span>
+                          <span className="sm:hidden">View</span>
+                        </button>
+                        <button
+                          onClick={() => handleCreateSession(classItem.id)}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                        >
+                          <FaPlus className="w-3.5 h-3.5" />
+                          Session
+                        </button>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex gap-2 flex-col sm:flex-row">
-                    <button
-                      onClick={() => handleViewDetails(classItem.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 text-sm font-medium rounded-lg transition-colors duration-200"
-                    >
-                      <FaEye className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">View Details</span>
-                      <span className="sm:hidden">View</span>
-                    </button>
-                    <button
-                      onClick={() => handleCreateSession(classItem.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                    >
-                      <FaPlus className="w-3.5 h-3.5" />
-                      Session
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="text-center py-12 w-full">
+                  <div className="text-6xl mb-4">📚</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No Classes Assigned
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Get started by adding your first class to begin teaching.
+                  </p>
+                  <Button
+                    onClick={() => setIsAddModalOpen(true)}
+                    variant="outline"
+                  >
+                    <FaPlus className="mr-2" />
+                    Add Your First Class
+                  </Button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12 w-full">
-              <div className="text-6xl mb-4">📚</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Classes Assigned
-              </h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Get started by adding your first class to begin teaching.
-              </p>
-              <Button onClick={() => setIsAddModalOpen(true)} variant="outline">
-                <FaPlus className="mr-2" />
-                Add Your First Class
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardContent>
-
-      <AddClassModal
-        isOpen={isAddModalOpen}
-        onCloseAction={() => {
-          setIsAddModalOpen(false);
-          handleClassAdded();
-        }}
-      />
-    </Card>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }

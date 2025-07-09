@@ -156,7 +156,7 @@ export default function ClassDetailView({
       />
 
       {/* Main Content */}
-      <div className="px-3 sm:px-4 md:px-5 lg:px-6">
+      <div className="px-3 sm:px-4 pb-36 md:px-5 lg:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Class Sessions - First on mobile, Left column on desktop */}
           <div className="order-1">

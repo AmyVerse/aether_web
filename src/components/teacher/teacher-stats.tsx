@@ -7,6 +7,7 @@ import {
   FaClock,
   FaUsers,
 } from "react-icons/fa";
+import { useSessionStore } from "@/store/useSessionStore";
 
 interface StatCardProps {
   title: string;
@@ -46,16 +47,22 @@ export default function TeacherStats() {
     todayClasses: 0,
   });
   const [loading, setLoading] = useState(true);
+  const academicYear = useSessionStore((s) => s.academicYear);
+  const semesterType = useSessionStore((s) => s.semesterType);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [academicYear, semesterType]);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-      // Fetch teacher's classes
-      const teacherClassesResponse = await fetch("/api/teacher/classes");
+      // Pass academicYear and semesterType as query params
+      const params = new URLSearchParams();
+      if (academicYear) params.append("academicYear", academicYear);
+      if (semesterType) params.append("semesterType", semesterType);
+
+      const teacherClassesResponse = await fetch(`/api/teacher/classes?${params.toString()}`);
       let teacherClasses: any[] = [];
       if (teacherClassesResponse.ok) {
         const teacherData = await teacherClassesResponse.json();

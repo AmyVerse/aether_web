@@ -1,4 +1,6 @@
+import { on } from "events";
 import { ReactNode } from "react";
+import { FaTimes } from "react-icons/fa";
 
 interface DialogProps {
   isOpen: boolean;
@@ -38,11 +40,23 @@ export default function Dialog({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl p-6 w-80 shadow-2xl border border-gray-100"
+        className="bg-white rounded-xl w-full h-full border p-4 sm:p-6 border-gray-100 sm:max-w-4xl sm:h-auto max-h-screen overflow-y-auto shadow-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-        {description && <p className="text-gray-600 mb-6">{description}</p>}
+        <div className="flex flex-row justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {title}
+            </h3>
+            {description && <p className="text-gray-600 mb-6">{description}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 w-fit h-fit hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
+          >
+            <FaTimes className="w-4 h-4" />
+          </button>
+        </div>
         {children && <div className="mb-6">{children}</div>}
         {showActions && (
           <div className="flex gap-3">

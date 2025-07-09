@@ -1,10 +1,9 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
+import Dialog from "@/components/ui/dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/useToast";
+import { useSessionStore } from "@/store/useSessionStore";
 import { useEffect, useState } from "react";
-import { FaTimes } from "react-icons/fa";
 
 interface AddClassModalProps {
   isOpen: boolean;
@@ -43,10 +42,15 @@ export default function AddClassModal({
   isOpen,
   onCloseAction,
 }: AddClassModalProps) {
+  // Use zustand for academic year and semester type (hidden from UI)
+  const academicYear = useSessionStore((s) => s.academicYear);
+  const semesterType = useSessionStore((s) => s.semesterType);
+  const [semester, setSemester] = useState(1);
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
-  const [selectedSemester, setSelectedSemester] = useState("");
+  const [selectedSemesterType, setSelectedSemesterType] = useState("");
+  const [selectedSemesterNumber, setSelectedSemesterNumber] = useState("");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("");
 
@@ -57,6 +61,7 @@ export default function AddClassModal({
   const [days, setDays] = useState<string[]>([]);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
 
+  const [allEntries, setAllEntries] = useState<TimetableEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<TimetableEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState("");
   const [loading, setLoading] = useState(false);
@@ -99,9 +104,12 @@ export default function AddClassModal({
         const uniqueSections = Array.from(
           new Set(entries.map((e: any) => e.section).filter(Boolean)),
         ) as string[];
-        const uniqueSemesters = Array.from(
+        const uniqueSemesterTypes = Array.from(
           new Set(entries.map((e: any) => e.semester_type).filter(Boolean)),
         ) as string[];
+        const uniqueSemesterNumbers = Array.from(
+          new Set(entries.map((e: any) => e.semester).filter(Boolean)),
+        ) as (string | number)[];
         const uniqueDays = Array.from(
           new Set(entries.map((e: any) => e.day).filter(Boolean)),
         ) as string[];
@@ -112,11 +120,13 @@ export default function AddClassModal({
         setSubjects(uniqueSubjects);
         setBranches(uniqueBranches);
         setSections(uniqueSections);
-        setSemesters(uniqueSemesters);
+        setSemesters(uniqueSemesterTypes);
+        // Optionally, you can store uniqueSemesterNumbers in state if you want a dropdown for semester number
         setDays(uniqueDays);
         setTimeSlots(uniqueTimeSlots);
 
-        // Initially show all entries
+        // Store all entries for filtering
+        setAllEntries(entries);
         setFilteredEntries(entries);
       }
     } catch (error) {
@@ -128,41 +138,47 @@ export default function AddClassModal({
 
   // Filter entries based on selected criteria
   useEffect(() => {
-    const filterEntries = async () => {
+    const filterEntries = () => {
       if (!isOpen) return;
 
-      const params = new URLSearchParams();
-      if (selectedSubject) params.append("subject", selectedSubject);
-      if (selectedBranch) params.append("branch", selectedBranch);
-      if (selectedSection) params.append("section", selectedSection);
-      if (selectedSemester) params.append("semester", selectedSemester);
-      if (selectedDay) params.append("day", selectedDay);
-      if (selectedTimeSlot) params.append("time_slot", selectedTimeSlot);
-
-      try {
-        const response = await fetch(
-          `/api/utils/timetable/entries?${params.toString()}`,
-        );
-        const data = await response.json();
-
-        if (data.success) {
-          setFilteredEntries(data.data);
-          setSelectedEntry(""); // Reset selection when filters change
-        }
-      } catch (error) {
-        console.error("Error filtering entries:", error);
+      // Always filter in-memory by academic year and semester type, as well as other filters
+      let filtered = allEntries;
+      // Always filter by academic year and semester type from zustand
+      if (academicYear) {
+        filtered = filtered.filter((e) => e.academic_year === academicYear);
       }
+      if (semesterType) {
+        filtered = filtered.filter((e) => e.semester_type === semesterType);
+      }
+      // Semester number is a user filter, not part of session context
+      if (selectedSubject) {
+        filtered = filtered.filter((e) => e.subject_id === selectedSubject);
+      }
+      if (selectedBranch) {
+        filtered = filtered.filter((e) => e.branch === selectedBranch);
+      }
+      if (selectedSection) {
+        filtered = filtered.filter((e) => e.section === selectedSection);
+      }
+      if (selectedSemesterNumber) {
+        filtered = filtered.filter(
+          (e) => String((e as any).semester) === String(selectedSemesterNumber),
+        );
+      }
+      setFilteredEntries(filtered);
+      setSelectedEntry("");
     };
 
     filterEntries();
   }, [
+    academicYear,
+    semesterType,
     selectedSubject,
     selectedBranch,
     selectedSection,
-    selectedSemester,
-    selectedDay,
-    selectedTimeSlot,
+    selectedSemesterNumber,
     isOpen,
+    allEntries,
   ]);
 
   const handleSubmit = async () => {
@@ -199,7 +215,8 @@ export default function AddClassModal({
     setSelectedSubject("");
     setSelectedBranch("");
     setSelectedSection("");
-    setSelectedSemester("");
+    setSelectedSemesterType("");
+    setSelectedSemesterNumber("");
     setSelectedDay("");
     setSelectedTimeSlot("");
     setSelectedEntry("");
@@ -208,38 +225,27 @@ export default function AddClassModal({
   };
 
   if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 min-h-screen">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-auto my-auto animate-in fade-in-0 zoom-in-95 duration-200">
-        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-              Add New Class
-            </h2>
-            <p className="text-gray-600 text-xs sm:text-sm">
-              Filter and select from available timetable entries
-            </p>
-          </div>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
-          >
-            <FaTimes className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Dialog
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Add New Class"
+      description="Filter and select from available timetable entries"
+      showActions={false}
+    >
+      <div className="p-0 sm:p-0 w-full h-full sm:max-w-4xl sm:h-auto max-h-screen overflow-y-auto flex flex-col">
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Filter Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 2x3 Grid for all filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+            {/* Academic Year and Semester Type are filtered in the background using zustand, not shown to user */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Subject
               </label>
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded"
               >
                 <option value="">All Subjects</option>
                 {subjects.map((subject) => (
@@ -249,15 +255,14 @@ export default function AddClassModal({
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Branch
               </label>
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded"
               >
                 <option value="">All Branches</option>
                 {branches.map((branch) => (
@@ -267,15 +272,14 @@ export default function AddClassModal({
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Section
               </label>
               <select
                 value={selectedSection}
                 onChange={(e) => setSelectedSection(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded"
               >
                 <option value="">All Sections</option>
                 {sections.map((section) => (
@@ -285,60 +289,19 @@ export default function AddClassModal({
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Filter Row 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Semester Type
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Semester Number
               </label>
               <select
-                value={selectedSemester}
-                onChange={(e) => setSelectedSemester(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedSemesterNumber}
+                onChange={(e) => setSelectedSemesterNumber(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded"
               >
                 <option value="">All Semesters</option>
-                {semesters.map((semester) => (
-                  <option key={semester} value={semester}>
-                    {semester.charAt(0).toUpperCase() + semester.slice(1)}{" "}
-                    Semester
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Day
-              </label>
-              <select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Days</option>
-                {days.map((day) => (
-                  <option key={day} value={day}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time Slot
-              </label>
-              <select
-                value={selectedTimeSlot}
-                onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Time Slots</option>
-                {timeSlots.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {slot}
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+                  <option key={num} value={num}>
+                    {num}
                   </option>
                 ))}
               </select>
@@ -452,6 +415,6 @@ export default function AddClassModal({
           </Button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

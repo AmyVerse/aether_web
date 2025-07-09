@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ContentLoader from "@/components/ui/content-loader";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { useToast } from "@/hooks/useToast";
+import { useSessionStore } from "@/store/useSessionStore";
 import { useEffect, useState } from "react";
 import {
   FaCalendarDay,
@@ -45,6 +46,8 @@ export default function TeacherUpcomingClasses() {
   const [currentDay, setCurrentDay] = useState<string>("");
   const { sessionData } = useCachedSession();
   const { showError, showSuccess } = useToast();
+  const academicYear = useSessionStore((s) => s.academicYear);
+  const semesterType = useSessionStore((s) => s.semesterType);
 
   useEffect(() => {
     const fetchTodayClasses = async () => {
@@ -55,7 +58,14 @@ export default function TeacherUpcomingClasses() {
 
       try {
         setLoading(true);
-        const response = await fetch("/api/teacher/classes");
+        // Use academicYear as-is (always full format '2024-2025')
+        const params = new URLSearchParams({
+          academicYear,
+          semesterType,
+        });
+        const response = await fetch(
+          `/api/teacher/classes?${params.toString()}`,
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch teacher classes");
@@ -121,7 +131,7 @@ export default function TeacherUpcomingClasses() {
     };
 
     fetchTodayClasses();
-  }, [sessionData]);
+  }, [sessionData, academicYear, semesterType]);
 
   const handleViewDetails = (classId: string) => {
     // Navigate to specific class detail using nanoid
