@@ -1,6 +1,7 @@
 "use client";
 
 import AttendancePage from "@/components/teacher/attendance-page";
+import Head from "next/head";
 import { useEffect, useState } from "react";
 
 interface PageProps {
@@ -27,8 +28,13 @@ export default function TeacherSessionAttendancePage({ params }: PageProps) {
   }
 
   return (
-    <div className="h-screen">
-      <AttendancePage sessionId={sessionId} />
-    </div>
+    <>
+      <Head>
+        <title>Attendance | Aether</title>
+      </Head>
+      <div className="h-screen">
+        <AttendancePage sessionId={sessionId} />
+      </div>
+    </>
   );
 }

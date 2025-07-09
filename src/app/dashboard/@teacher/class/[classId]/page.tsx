@@ -1,6 +1,7 @@
 "use client";
 import ClassDetailView from "@/components/teacher/class-detail-view";
 import { Button } from "@/components/ui/button";
+import Head from "next/head";
 import { useEffect, useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 
@@ -41,8 +42,13 @@ export default function ClassDetailPage({ params }: PageProps) {
   };
 
   return (
+     <>
+      <Head>
+        <title>Class Details | Aether</title>
+      </Head>
     <div className="h-screen">
       {classId && <ClassDetailView classId={classId} />}
-    </div>
+      </div>
+      </>
   );
 }

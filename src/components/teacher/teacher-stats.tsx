@@ -18,9 +18,9 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, color, description }: StatCardProps) {
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-300 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1">
+    <div className="p-2 sm:p-4">
+      <div className="flex bg-white p-2 sm:p-4 items-center rounded-lg border border-gray-300 hover:shadow-md transition-shadow">
+        <div className="flex-1">
           <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">
             {title}
           </p>
@@ -44,58 +44,50 @@ export default function TeacherStats() {
     totalStudents: 0,
     activeClasses: 0,
     todayClasses: 0,
-    weeklyHours: 18, // Keep this static as requested
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTeacherStats();
+    fetchStats();
   }, []);
 
-  const fetchTeacherStats = async () => {
+  const fetchStats = async () => {
     try {
       setLoading(true);
-
-      // Fetch total students
-      const studentsResponse = await fetch("/api/teacher/dashboard", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (studentsResponse.ok) {
-        const data = await studentsResponse.json();
-
-        // Count total students across all classes
-        const totalStudents =
-          data.classes?.reduce((total: number, classData: any) => {
-            return total + (classData.student_count || 0);
-          }, 0) || 0;
-
-        // Count active classes
-        const activeClasses = data.classes?.length || 0;
-
-        // Count today's classes
-        const today = new Date().toISOString().split("T")[0];
-        const todayClasses =
-          data.sessions?.filter((session: any) => {
-            const sessionDate = new Date(session.date)
-              .toISOString()
-              .split("T")[0];
-            return sessionDate === today;
-          }).length || 0;
-
-        setStats({
-          totalStudents,
-          activeClasses,
-          todayClasses,
-          weeklyHours: 18, // Keep static
-        });
+      // Fetch teacher's classes
+      const teacherClassesResponse = await fetch("/api/teacher/classes");
+      let teacherClasses: any[] = [];
+      if (teacherClassesResponse.ok) {
+        const teacherData = await teacherClassesResponse.json();
+        if (teacherData.success) {
+          teacherClasses = teacherData.data;
+        }
       }
+      // Today's classes for teacher
+      const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+      const todayClasses = teacherClasses.filter((c) => c.day === today);
+      // Total students across all teacher's classes
+      let totalStudents = 0;
+      for (const c of teacherClasses) {
+        if (typeof c.student_count === "number") {
+          totalStudents += c.student_count;
+        } else {
+          try {
+            const res = await fetch(`/api/teacher/classes/${c.id}/students`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success) totalStudents += data.data.length;
+            }
+          } catch {}
+        }
+      }
+      setStats({
+        totalStudents,
+        activeClasses: teacherClasses.length,
+        todayClasses: todayClasses.length,
+      });
     } catch (error) {
       console.error("Failed to fetch teacher stats:", error);
-      // Keep default values on error
     } finally {
       setLoading(false);
     }
@@ -128,12 +120,13 @@ export default function TeacherStats() {
         color="bg-purple-50"
         description="Scheduled for today"
       />
+      {/* Placeholder for last stat */}
       <StatCard
-        title="Weekly Hours"
-        value={stats.weeklyHours}
+        title="Placeholder"
+        value={"-"}
         icon={<FaClock className="text-orange-600 text-lg sm:text-xl" />}
         color="bg-orange-50"
-        description="Teaching hours"
+        description="Placeholder stat"
       />
     </div>
   );

@@ -195,15 +195,13 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <div
-            className={`flex gap-4 sm:${classes.length > 1 ? "min-w-max" : ""} flex-col sm:flex-row`}
-          >
-            {classes.length > 0 ? (
-              classes.map((classItem) => (
+        <div className="w-full">
+          {classes.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {classes.map((classItem) => (
                 <div
                   key={classItem.id}
-                  className="flex-shrink-0 w-full sm:w-80 flex flex-col justify-between p-4 rounded-xl border border-gray-300 bg-white hover:border-gray-400 hover:shadow-md transition-all duration-200"
+                  className="flex flex-col justify-between p-4 rounded-xl border border-gray-300 bg-white hover:border-gray-400 hover:shadow-md transition-all duration-200 min-h-[200px]"
                 >
                   <div className="flex-1">
                     <div className="mb-3">
@@ -253,26 +251,23 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
                     </button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-12 w-full">
-                <div className="text-6xl mb-4">📚</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Classes Assigned
-                </h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Get started by adding your first class to begin teaching.
-                </p>
-                <Button
-                  onClick={() => setIsAddModalOpen(true)}
-                  variant="outline"
-                >
-                  <FaPlus className="mr-2" />
-                  Add Your First Class
-                </Button>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 w-full">
+              <div className="text-6xl mb-4">📚</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No Classes Assigned
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Get started by adding your first class to begin teaching.
+              </p>
+              <Button onClick={() => setIsAddModalOpen(true)} variant="outline">
+                <FaPlus className="mr-2" />
+                Add Your First Class
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
 
