@@ -44,7 +44,7 @@ export const generateSingleRoomCSV = (
   // Create a map for easier lookup
   const dataMap = new Map();
   data.forEach((entry) => {
-    const key = `${entry.day}-${entry.time_slot}`;
+    const key = "`${entry.day}-${entry.time_slot}`";
     dataMap.set(key, entry);
   });
 
@@ -116,7 +116,7 @@ export const generateAllRoomsCSV = (
     // Create a map for easier lookup for this room
     const roomEntriesMap = new Map();
     roomEntries.forEach((entry: TimetableEntry) => {
-      const key = `${entry.day}-${entry.time_slot}`;
+      const key = "`${entry.day}-${entry.time_slot}`";
       roomEntriesMap.set(key, entry);
     });
 

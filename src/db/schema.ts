@@ -10,6 +10,7 @@ import {
   time,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
   type AnyPgColumn,
@@ -265,36 +266,59 @@ export const rooms = pgTable("rooms", {
 });
 
 // Central Timetable Table - Each cell gets a separate entry (total ~600 per semester)
-export const timetableEntries = pgTable("timetable_entries", {
+export const timetableEntries = pgTable(
+  "timetable_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    // Academic details
+    academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2024-2025"
+    semester_type: semesterTypeEnum("semester_type").notNull(), // "odd" or "even"
+    semester: integer("semester").notNull(), // 1-8
+
+    // References with IDs
+    room_id: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    subject_id: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, {
+        onDelete: "set null",
+      }),
+
+    // Class details from enums
+    branch: branchEnum("branch").notNull(),
+    section: sectionEnum("section").notNull(),
+
+    // Additional metadata
+    notes: text("notes").notNull(),
+    color_code: varchar("color_code", { length: 10 }), // For UI color coding
+
+    // System fields
+    created_by: uuid("created_by").references(() => users.id), // Editor who created
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("unique_timetable_entry").on(
+      table.academic_year,
+      table.semester_type,
+      table.subject_id,
+      table.branch,
+      table.semester,
+      table.section,
+      table.notes,
+    ),
+  ],
+);
+// Timetable Entries Timings Table
+export const timetableEntriesTimings = pgTable("timetable_entries_timings", {
   id: uuid("id").defaultRandom().primaryKey(),
-
-  // Academic details
-  academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2024-2025"
-  semester_type: semesterTypeEnum("semester_type").notNull(), // "odd" or "even"
-  semester: integer("semester"), // 1-8
-
-  // References with IDs
-  room_id: uuid("room_id")
+  timetable_entry_id: uuid("timetable_entry_id")
     .notNull()
-    .references(() => rooms.id, { onDelete: "cascade" }),
-  subject_id: uuid("subject_id").references(() => subjects.id, {
-    onDelete: "set null",
-  }), // Optional - can be empty slot
-
-  // Class details from enums
-  branch: branchEnum("branch"),
-  section: sectionEnum("section"),
+    .references(() => timetableEntries.id, { onDelete: "cascade" }),
   day: dayEnum("day").notNull(),
   time_slot: timeSlotEnum("time_slot").notNull(),
-
-  // Additional metadata
-  notes: text("notes"),
-  color_code: varchar("color_code", { length: 10 }), // For UI color coding
-
-  // System fields
-  created_by: uuid("created_by").references(() => users.id), // Editor who created
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
 });
 
 // Teacher Classes Table - Links teachers to their assigned timetable entries

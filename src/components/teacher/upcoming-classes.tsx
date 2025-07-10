@@ -15,22 +15,25 @@ import {
 
 interface TeacherClass {
   id: string;
+  timetable_entry_id?: string;
   subject_name: string;
   subject_code: string;
   branch: string | null;
   section: string | null;
-  day: string;
-  time_slot: string;
   room_number: string;
   academic_year: string;
   semester_type: string;
+  notes?: string;
+  timings?: { day: string; time_slot: string }[];
 }
 
-interface TodayClass extends TeacherClass {
+interface TodayClass {
+  id: string;
   subject_display: string;
-  formatted_time: string;
   class_location: string;
   class_group: string | null;
+  notes?: string;
+  time_slot: string;
   time_sort: number;
 }
 
@@ -88,36 +91,36 @@ export default function TeacherUpcomingClasses() {
           const currentDay = dayNames[today.getDay()];
           setCurrentDay(currentDay);
 
-          // Filter classes for today and process them
-          const todayClasses = result.data
-            .filter((classItem) => classItem.day === currentDay)
-            .map((classItem): TodayClass => {
-              const timeSlot = classItem.time_slot;
-              const [startTime] = timeSlot.split("-");
-              const [hour, minute] = startTime.split(":").map(Number);
-
-              // Convert to 12-hour format
-              const period = hour >= 12 ? "PM" : "AM";
-              const displayHour =
-                hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-              const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-
-              const classTimeInMinutes = hour * 60 + minute;
-
-              return {
-                ...classItem,
-                subject_display: classItem.subject_name,
-                formatted_time: formattedTime,
-                time_sort: classTimeInMinutes,
-                class_location: classItem.room_number,
-                class_group:
-                  classItem.branch && classItem.section
-                    ? `${classItem.branch} : ${classItem.section}`
-                    : null,
-              };
-            })
-            .sort((a, b) => a.time_sort - b.time_sort);
-
+          // For each class, if it has timings for today, show a card for each timing
+          const todayClasses: TodayClass[] = [];
+          for (const classItem of result.data) {
+            if (Array.isArray(classItem.timings)) {
+              classItem.timings.forEach((timing) => {
+                if (timing.day === currentDay) {
+                  const [startTime] = timing.time_slot.split("-");
+                  const [hour, minute] = startTime.split(":").map(Number);
+                  const period = hour >= 12 ? "PM" : "AM";
+                  const displayHour =
+                    hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                  const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+                  const classTimeInMinutes = hour * 60 + minute;
+                  todayClasses.push({
+                    id: classItem.id,
+                    subject_display: classItem.subject_name,
+                    class_location: classItem.room_number,
+                    class_group:
+                      classItem.branch && classItem.section
+                        ? `${classItem.branch} : ${classItem.section}`
+                        : null,
+                    notes: classItem.notes,
+                    time_slot: `${timing.day}: ${formattedTime}`,
+                    time_sort: classTimeInMinutes,
+                  });
+                }
+              });
+            }
+          }
+          todayClasses.sort((a, b) => a.time_sort - b.time_sort);
           setClasses(todayClasses);
         } else {
           throw new Error("API returned error");
@@ -236,11 +239,16 @@ export default function TeacherUpcomingClasses() {
                           {classItem.class_group}
                         </p>
                       )}
+                      {classItem.notes && (
+                        <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium mb-2">
+                          {classItem.notes}
+                        </div>
+                      )}
                       <div className="space-y-1 text-sm text-gray-500">
                         <div className="flex items-center gap-1.5">
                           <FaClock className="w-3.5 h-3.5" />
                           <span className="font-medium">
-                            {classItem.formatted_time}
+                            {classItem.time_slot}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">

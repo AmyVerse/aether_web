@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/useToast";
+import { useSessionStore } from "@/store/useSessionStore";
 import { RoomData, SubjectData, TimetableEntry } from "@/types/timetable";
 import {
   downloadCSV,
   generateAllRoomsCSV,
   generateSingleRoomCSV,
 } from "@/utils/timetableExport";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FaChevronDown,
   FaChevronRight,
@@ -21,9 +22,8 @@ import {
 } from "react-icons/fa";
 
 interface TimetableGridProps {
-  academicYear: string;
-  semesterType: "odd" | "even";
   onCellClick?: (day: string, timeSlot: string, roomId?: string) => void;
+  refreshKey?: number;
 }
 
 const DAYS = [
@@ -48,10 +48,14 @@ const TIME_SLOTS = [
 ];
 
 export default function TimetableGrid({
-  academicYear,
-  semesterType,
   onCellClick,
+  refreshKey,
 }: TimetableGridProps) {
+  // Use Zustand for academic year and semester type
+  const academicYear = useSessionStore((s: any) => s.academicYear);
+  const semesterType = useSessionStore((s: any) => s.semesterType);
+
+  // Timetable entries, expected to be normalized: each entry includes day, timeSlot, roomId, etc.
   const [timetableData, setTimetableData] = useState<TimetableEntry[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
   const [roomsList, setRoomsList] = useState<RoomData[]>([]);
@@ -146,16 +150,16 @@ export default function TimetableGrid({
     fetchSubjects();
   }, [fetchRooms, fetchSubjects]);
 
-  // Fetch timetable data
+  // Fetch all timetable data for the selected academic year and semester, for all rooms at once
   const fetchTimetableData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/editor?action=timetable&academic_year=${academicYear}&semester_type=${semesterType}&room_id=${selectedRoom}`,
+        `/api/editor?action=timetable&academic_year=${academicYear}&semester_type=${semesterType}`,
       );
       const data = await response.json();
-
       if (response.ok) {
+        // Expecting data.timetable to be an array of entries, each with: { day, timeSlot, room_id, ... }
         setTimetableData(data.timetable || []);
       } else {
         showError(data.error || "Failed to fetch timetable");
@@ -165,27 +169,34 @@ export default function TimetableGrid({
     } finally {
       setLoading(false);
     }
-  }, [academicYear, semesterType, selectedRoom, showError]);
+  }, [academicYear, semesterType, showError]);
 
   useEffect(() => {
-    if (selectedRoom) {
-      fetchTimetableData();
-    }
-  }, [academicYear, semesterType, selectedRoom, fetchTimetableData]);
+    fetchTimetableData();
+  }, [academicYear, semesterType, fetchTimetableData, refreshKey]);
 
-  // Get cell data for specific day and time slot
+  // Build a fast lookup map: { [day_slot_roomId]: entry }
+  const timetableMap = useMemo(() => {
+    const map: Record<string, TimetableEntry> = {};
+    for (const entry of timetableData) {
+      // Always use timings array for mapping
+      if (Array.isArray(entry.timings)) {
+        for (const timing of entry.timings) {
+          if (timing.day && timing.time_slot && entry.room_id) {
+            map[`${timing.day}_${timing.time_slot}_${entry.room_id}`] = entry;
+          }
+        }
+      }
+    }
+    return map;
+  }, [timetableData]);
+
+  // Get cell data for specific day and time slot for selected room
   const getCellData = (
     day: string,
     timeSlot: string,
   ): TimetableEntry | null => {
-    return (
-      timetableData.find(
-        (entry) =>
-          entry.day === day &&
-          entry.time_slot === timeSlot &&
-          entry.room_id === selectedRoom,
-      ) || null
-    );
+    return timetableMap[`${day}_${timeSlot}_${selectedRoom}`] || null;
   };
 
   // Handle file upload (CSV/Excel grid format) - UI ONLY
@@ -313,7 +324,6 @@ export default function TimetableGrid({
   // Render cell content
   const renderCell = (day: string, timeSlot: string) => {
     const cellData = getCellData(day, timeSlot);
-
     if (!cellData) {
       return (
         <div
@@ -324,24 +334,26 @@ export default function TimetableGrid({
         </div>
       );
     }
-
-    const bgColor = cellData.color_code || "bg-blue-50";
+    const bgColor = cellData.color_code || "#e0f2fe";
+    const room = roomsList.find((r) => r.id === cellData.room_id);
     const textColor =
-      cellData.room_type === "Lab" ? "text-yellow-800" : "text-blue-800";
-
+      room?.room_type === "Lab" ? "text-yellow-800" : "text-blue-800";
     return (
       <div
-        className={`h-16 border border-gray-200 p-1 cursor-pointer hover:opacity-80 ${bgColor} ${textColor}`}
+        className={`h-16 border border-gray-200 p-1 cursor-pointer hover:opacity-80 ${textColor}`}
         onClick={() => handleCellEdit(day, timeSlot)}
-        style={{ backgroundColor: cellData.color_code }}
+        style={{ backgroundColor: bgColor }}
       >
-        <div className="text-xs font-semibold truncate">
+        <div className="text-sm font-semibold truncate">
           {cellData.course_code}
         </div>
         {cellData.branch && cellData.section && (
           <div className="text-xs truncate">
             {cellData.branch}-{cellData.section}
           </div>
+        )}
+        {cellData.semester && (
+          <div className="text-xs truncate">Sem {cellData.semester}</div>
         )}
       </div>
     );

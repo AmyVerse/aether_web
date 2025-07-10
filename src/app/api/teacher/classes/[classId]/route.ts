@@ -14,20 +14,19 @@ export async function GET(
 
     const resolvedParams = await params;
 
-    // Get class details - teacher is already authenticated, no need to verify ownership
-    const classDetails = await db
+    // Get class details (main info)
+    const classDetailsArr = await db
       .select({
         id: classTeachers.id,
         subject_name: subjects.course_name,
         subject_code: subjects.course_code,
         branch: timetableEntries.branch,
         section: timetableEntries.section,
-        day: timetableEntries.day,
-        time_slot: timetableEntries.time_slot,
         room_number: rooms.room_number,
         academic_year: timetableEntries.academic_year,
         semester_type: timetableEntries.semester_type,
         notes: classTeachers.notes,
+        timetable_entry_id: classTeachers.timetable_entry_id,
       })
       .from(classTeachers)
       .innerJoin(
@@ -39,13 +38,40 @@ export async function GET(
       .where(eq(classTeachers.id, resolvedParams.classId))
       .limit(1);
 
-    if (classDetails.length === 0) {
+    if (classDetailsArr.length === 0) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    const classDetails = classDetailsArr[0];
+
+    // Get all timings for this timetable entry (clubbed timings)
+    // We need to get all day/time_slot pairs for the timetable_entry_id
+    const timings = await db.query.timetableEntriesTimings.findMany({
+      where: (timing, { eq }) =>
+        eq(timing.timetable_entry_id, classDetails.timetable_entry_id),
+      columns: {
+        day: true,
+        time_slot: true,
+      },
+      orderBy: (timing, { asc }) => [asc(timing.day), asc(timing.time_slot)],
+    });
+
+    // For backward compatibility, pick the first timing as day/time_slot
+    let day = "";
+    let time_slot = "";
+    if (timings.length > 0) {
+      day = timings[0].day;
+      time_slot = timings[0].time_slot;
     }
 
     return NextResponse.json({
       success: true,
-      data: classDetails[0],
+      data: {
+        ...classDetails,
+        day,
+        time_slot,
+        timings,
+      },
     });
   } catch (error) {
     console.error("Error fetching class details:", error);

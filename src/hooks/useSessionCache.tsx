@@ -14,6 +14,7 @@ interface CachedSessionData {
     name?: string;
     email?: string;
     image?: string;
+    roleId?: string;
     role?: string;
   } | null;
   status: "loading" | "authenticated" | "unauthenticated";
@@ -22,6 +23,7 @@ interface CachedSessionData {
 interface SessionContextType {
   sessionData: CachedSessionData;
   isLoading: boolean;
+  userRoleId: string | undefined;
   userRole: string | undefined;
   userImage: string | undefined;
   userName: string | undefined;
@@ -68,6 +70,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
           email: session.user?.email || undefined,
           image: session.user?.image || undefined,
           role: session.user?.role || undefined,
+          roleId: session.user?.roleId || undefined,
         },
         status: "authenticated",
       };
@@ -100,6 +103,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     userImage: cachedSession.user?.image,
     userName: cachedSession.user?.name,
     userEmail: cachedSession.user?.email,
+    userRoleId: cachedSession.user?.roleId,
   };
 
   return (

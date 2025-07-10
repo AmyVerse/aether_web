@@ -15,12 +15,13 @@ interface ClassDetails {
   subject_code: string;
   branch: string;
   section: string;
-  day: string;
-  time_slot: string;
+  day?: string; // fallback for legacy
+  time_slot?: string; // fallback for legacy
   room_number: string;
   academic_year: string;
   semester_type: string;
   notes?: string;
+  timings?: { day: string; time_slot: string }[]; // normalized timings
 }
 
 interface Student {
@@ -146,11 +147,19 @@ export default function ClassDetailView({
     );
   }
 
+  // Patch: fallback for legacy day/time_slot, but prefer timings array if present
+  let timings: { day: string; time_slot: string }[] = [];
+  if (Array.isArray(classDetails.timings) && classDetails.timings.length > 0) {
+    timings = classDetails.timings;
+  } else if (classDetails.day && classDetails.time_slot) {
+    timings = [{ day: classDetails.day, time_slot: classDetails.time_slot }];
+  }
+
   return (
     <div>
       {/* Class Description with Create Session Button in Header */}
       <ClassDescription
-        classDetails={classDetails}
+        classDetails={{ ...classDetails, timings }}
         studentCount={classStudents.length}
         onBack={handleBack}
       />

@@ -146,8 +146,6 @@ export async function GET(req: NextRequest) {
             subject_id: timetableEntries.subject_id,
             course_code: subjects.course_code,
             course_name: subjects.course_name,
-            day: timetableEntries.day,
-            time_slot: timetableEntries.time_slot,
             branch: timetableEntries.branch,
             section: timetableEntries.section,
             color_code: timetableEntries.color_code,
@@ -197,8 +195,6 @@ export async function GET(req: NextRequest) {
             subject_id: timetableEntries.subject_id,
             course_code: subjects.course_code,
             course_name: subjects.course_name,
-            day: timetableEntries.day,
-            time_slot: timetableEntries.time_slot,
             branch: timetableEntries.branch,
             section: timetableEntries.section,
             color_code: timetableEntries.color_code,
@@ -240,90 +236,6 @@ export async function POST(req: NextRequest) {
     const { action } = body;
 
     switch (action) {
-      case "import-excel":
-        const importData = excelImportSchema.parse(body);
-
-        let successfulEntries = 0;
-        let failedEntries = 0;
-        const errors: string[] = [];
-
-        // Delete existing data for this academic year and semester
-        await db
-          .delete(timetableEntries)
-          .where(
-            and(
-              eq(timetableEntries.academic_year, importData.academic_year),
-              eq(timetableEntries.semester_type, importData.semester_type),
-            ),
-          );
-
-        // Process each entry from Excel
-        for (const entry of importData.data) {
-          try {
-            // Find or create room
-            let room = await db
-              .select()
-              .from(rooms)
-              .where(eq(rooms.room_number, entry.room_number))
-              .limit(1);
-
-            if (room.length === 0) {
-              // Create room if it doesn't exist
-              const newRoom = await db
-                .insert(rooms)
-                .values({
-                  room_number: entry.room_number,
-                  room_type: "Classroom", // Default, can be updated later
-                })
-                .returning();
-              room = newRoom;
-            }
-
-            // Find subject if subject_code is provided (maps to course_code in DB)
-            let subject_id = null;
-            if (entry.subject_code) {
-              const subject = await db
-                .select()
-                .from(subjects)
-                .where(eq(subjects.course_code, entry.subject_code))
-                .limit(1);
-
-              if (subject.length > 0) {
-                subject_id = subject[0].id;
-              }
-            }
-
-            // Insert timetable entry
-            await db.insert(timetableEntries).values({
-              academic_year: importData.academic_year,
-              semester_type: importData.semester_type,
-              room_id: room[0].id,
-              subject_id,
-              branch: entry.branch,
-              section: entry.section,
-              day: entry.day,
-              time_slot: entry.time_slot,
-              color_code: entry.color_code,
-              notes: entry.notes,
-              created_by: session.user.id,
-            });
-
-            successfulEntries++;
-          } catch (error) {
-            failedEntries++;
-            errors.push(
-              `Row ${entry.room_number}-${entry.day}-${entry.time_slot}: ${error}`,
-            );
-          }
-        }
-
-        return NextResponse.json({
-          success: true,
-          successfulEntries,
-          failedEntries,
-          errors,
-        });
-
       case "create-room":
         const roomData = createRoomSchema.parse(body.data);
         const newRoom = await db.insert(rooms).values(roomData).returning();
@@ -356,42 +268,21 @@ export async function POST(req: NextRequest) {
         const newEntryData = z
           .object({
             room_id: z.string().uuid(),
-            subject_id: z.string().uuid().optional(),
+            subject_id: z.string().uuid(),
             academic_year: z.string(),
             semester_type: z.enum(["odd", "even"]),
-            branch: z
-              .enum([
-                "CSE",
-                "CSE-AIML",
-                "CSE-DS",
-                "CSE-HCIGT",
-                "ECE",
-                "ECE-IoT",
-              ])
-              .optional(),
-            section: z.enum(["A", "B", "C"]).optional(),
-            day: z.enum([
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
+            semester: z.number(),
+            branch: z.enum([
+              "CSE",
+              "CSE-AIML",
+              "CSE-DS",
+              "CSE-HCIGT",
+              "ECE",
+              "ECE-IoT",
             ]),
-            time_slot: z.enum([
-              "8:00-8:55",
-              "9:00-9:55",
-              "10:00-10:55",
-              "11:00-11:55",
-              "12:00-12:55",
-              "13:00-13:55",
-              "14:00-14:55",
-              "15:00-15:55",
-              "16:00-16:55",
-              "17:00-17:55",
-            ]),
+            section: z.enum(["A", "B", "C"]),
             color_code: z.string().optional(),
-            notes: z.string().optional(),
+            notes: z.string(),
           })
           .parse(body.data);
 

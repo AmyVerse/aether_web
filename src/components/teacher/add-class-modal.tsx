@@ -17,14 +17,14 @@ interface TimetableEntry {
   subject_code?: string;
   branch: string;
   section: string;
-  day: string;
-  time_slot: string;
   room_id: string;
   room_number?: string;
   academic_year: string;
   semester_type: string;
+  semester?: string | number;
   notes?: string;
   color_code?: string;
+  timings?: { day: string; time_slot: string }[];
 }
 
 interface Subject {
@@ -110,20 +110,13 @@ export default function AddClassModal({
         const uniqueSemesterNumbers = Array.from(
           new Set(entries.map((e: any) => e.semester).filter(Boolean)),
         ) as (string | number)[];
-        const uniqueDays = Array.from(
-          new Set(entries.map((e: any) => e.day).filter(Boolean)),
-        ) as string[];
-        const uniqueTimeSlots = Array.from(
-          new Set(entries.map((e: any) => e.time_slot).filter(Boolean)),
-        ) as string[];
 
         setSubjects(uniqueSubjects);
         setBranches(uniqueBranches);
         setSections(uniqueSections);
         setSemesters(uniqueSemesterTypes);
-        // Optionally, you can store uniqueSemesterNumbers in state if you want a dropdown for semester number
-        setDays(uniqueDays);
-        setTimeSlots(uniqueTimeSlots);
+        setDays([]); // Not used in new schema
+        setTimeSlots([]); // Not used in new schema
 
         // Store all entries for filtering
         setAllEntries(entries);
@@ -162,7 +155,7 @@ export default function AddClassModal({
       }
       if (selectedSemesterNumber) {
         filtered = filtered.filter(
-          (e) => String((e as any).semester) === String(selectedSemesterNumber),
+          (e) => String(e.semester) === String(selectedSemesterNumber),
         );
       }
       setFilteredEntries(filtered);
@@ -351,7 +344,13 @@ export default function AddClassModal({
                       className="mr-3"
                     />
                     <div className="flex-1">
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-900">
+                            Semester No:
+                          </span>
+                          <div>{entry.semester ?? "-"}</div>
+                        </div>
                         <div>
                           <span className="font-medium text-gray-900">
                             Subject:
@@ -368,17 +367,24 @@ export default function AddClassModal({
                             {entry.branch} - {entry.section}
                           </div>
                         </div>
-                        <div>
+                        <div className="col-span-2">
                           <span className="font-medium text-gray-900">
                             Schedule:
                           </span>
-                          <div>{entry.day}</div>
+                          <div>
+                            {Array.isArray(entry.timings) &&
+                            entry.timings.length > 0
+                              ? entry.timings
+                                  .map((t) => `${t.day} (${t.time_slot})`)
+                                  .join(", ")
+                              : "-"}
+                          </div>
                         </div>
                         <div>
                           <span className="font-medium text-gray-900">
-                            Time:
+                            Notes:
                           </span>
-                          <div>{entry.time_slot}</div>
+                          <div>{entry.notes || "-"}</div>
                         </div>
                         <div>
                           <span className="font-medium text-gray-900">

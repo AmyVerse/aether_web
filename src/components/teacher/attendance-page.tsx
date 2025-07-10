@@ -234,7 +234,17 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   };
 
   const goBack = () => {
-    router.back();
+    // Try to extract classId from the current URL path
+    // URL format: /dashboard/class/[classId]/session/[sessionId]
+    const pathParts = window.location.pathname.split("/");
+    const classIdIndex = pathParts.indexOf("class") + 1;
+    const classId = pathParts[classIdIndex];
+
+    if (classId && classId !== "session") {
+      router.push(`/dashboard/class/${classId}`);
+    } else {
+      router.push(`/dashboard/class`);
+    }
   };
 
   if (loading) {

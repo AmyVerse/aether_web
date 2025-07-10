@@ -1,7 +1,13 @@
 import { db } from "@/db/index";
-import { classTeachers, rooms, subjects, timetableEntries } from "@/db/schema";
+import {
+  classTeachers,
+  rooms,
+  subjects,
+  timetableEntries,
+  timetableEntriesTimings,
+} from "@/db/schema";
 import { authenticateTeacher } from "@/utils/auth-helpers";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -67,16 +73,17 @@ export async function GET(request: NextRequest) {
     const classTeachersList = await db
       .select({
         id: classTeachers.id,
+        timetable_entry_id: timetableEntries.id,
         subject_name: subjects.course_name,
         subject_code: subjects.course_code,
         branch: timetableEntries.branch,
         section: timetableEntries.section,
-        day: timetableEntries.day,
-        time_slot: timetableEntries.time_slot,
+        semester: timetableEntries.semester, // <-- Added semester field
         room_number: rooms.room_number,
         academic_year: timetableEntries.academic_year,
         semester_type: timetableEntries.semester_type,
-        notes: timetableEntries.notes, // <-- add this line
+        notes: timetableEntries.notes,
+        // timings will be fetched separately
       })
       .from(classTeachers)
       .innerJoin(
@@ -87,9 +94,51 @@ export async function GET(request: NextRequest) {
       .leftJoin(rooms, eq(timetableEntries.room_id, rooms.id))
       .where(and(...conditions));
 
+    // Fetch timings for all timetable_entry_ids
+    const timetableEntryIds = classTeachersList.map(
+      (c) => c.timetable_entry_id,
+    );
+    let timings: {
+      timetable_entry_id: string;
+      day: string;
+      time_slot: string;
+    }[] = [];
+    if (timetableEntryIds.length > 0) {
+      timings = await db
+        .select({
+          timetable_entry_id: timetableEntriesTimings.timetable_entry_id,
+          day: timetableEntriesTimings.day,
+          time_slot: timetableEntriesTimings.time_slot,
+        })
+        .from(timetableEntriesTimings)
+        .where(
+          inArray(
+            timetableEntriesTimings.timetable_entry_id,
+            timetableEntryIds,
+          ),
+        );
+    }
+
+    // Group timings by timetable_entry_id
+    const timingsMap: Record<string, { day: string; time_slot: string }[]> = {};
+    for (const t of timings) {
+      if (!timingsMap[t.timetable_entry_id])
+        timingsMap[t.timetable_entry_id] = [];
+      timingsMap[t.timetable_entry_id].push({
+        day: t.day,
+        time_slot: t.time_slot,
+      });
+    }
+
+    // Club timings for each class
+    const result = classTeachersList.map((c) => ({
+      ...c,
+      timings: timingsMap[c.timetable_entry_id] || [],
+    }));
+
     return NextResponse.json({
       success: true,
-      data: classTeachersList,
+      data: result,
     });
   } catch (error) {
     console.error("Error fetching teacher classes:", error);

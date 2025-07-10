@@ -21,25 +21,29 @@ import AddClassModal from "./add-class-modal";
 
 interface TeacherClass {
   id: string;
+  timetable_entry_id?: string;
   subject_name: string;
   subject_code: string;
   branch: string;
   section: string;
-  day: string;
-  time_slot: string;
   room_number: string;
-  notes?: string; // Used for class type label (Lab/Tutorial/Theory)
+  notes?: string;
+  timings?: { day: string; time_slot: string }[];
   student_count?: number;
   session_count?: number;
 }
 
-interface ProcessedClass extends TeacherClass {
+interface ProcessedClass {
+  id: string;
   subject_display: string;
-  formatted_time: string;
   class_location: string;
   class_group: string | null;
-  time_sort: number;
   class_type_label?: string;
+  student_count?: number;
+  session_count?: number;
+  timing_day: string;
+  timing_time: string;
+  time_sort: number;
 }
 
 interface TeacherClassesResponse {
@@ -95,72 +99,64 @@ export default function ClassesList() {
       const result: TeacherClassesResponse = await response.json();
 
       if (result.success) {
-        // Process classes with additional data
-        const processedClasses = await Promise.all(
-          result.data.map(async (classItem): Promise<ProcessedClass> => {
-            const timeSlot = classItem.time_slot;
-            const [startTime] = timeSlot.split("-");
-            const [hour, minute] = startTime.split(":").map(Number);
-
-            // Convert to 12-hour format
-            const period = hour >= 12 ? "PM" : "AM";
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-
-            // Create time sort value for sorting
-            const timeSortValue = hour * 60 + minute;
-
-            // Fetch real-time student count and session count
-            let studentCount = 0;
-            let sessionCount = 0;
-
-            try {
-              // Fetch students for this class
-              const studentsResponse = await fetch(
-                `/api/teacher/classes/${classItem.id}/students`,
-              );
-              if (studentsResponse.ok) {
-                const studentsData = await studentsResponse.json();
-                if (studentsData.success) {
-                  studentCount = studentsData.data.length;
+        // For each class, create a ProcessedClass for each timing
+        const processedClasses: ProcessedClass[] = [];
+        for (const classItem of result.data) {
+          if (Array.isArray(classItem.timings)) {
+            for (const timing of classItem.timings) {
+              const [startTime] = timing.time_slot.split("-");
+              const [hour, minute] = startTime.split(":").map(Number);
+              const period = hour >= 12 ? "PM" : "AM";
+              const displayHour =
+                hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+              const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+              const timeSortValue = hour * 60 + minute;
+              // Fetch real-time student count and session count
+              let studentCount = 0;
+              let sessionCount = 0;
+              try {
+                const studentsResponse = await fetch(
+                  `/api/teacher/classes/${classItem.id}/students`,
+                );
+                if (studentsResponse.ok) {
+                  const studentsData = await studentsResponse.json();
+                  if (studentsData.success) {
+                    studentCount = studentsData.data.length;
+                  }
                 }
-              }
-
-              // Fetch sessions for this class
-              const sessionsResponse = await fetch(
-                `/api/teacher/classes/${classItem.id}/sessions`,
-              );
-              if (sessionsResponse.ok) {
-                const sessionsData = await sessionsResponse.json();
-                if (sessionsData.success) {
-                  sessionCount = sessionsData.data.length;
+                const sessionsResponse = await fetch(
+                  `/api/teacher/classes/${classItem.id}/sessions`,
+                );
+                if (sessionsResponse.ok) {
+                  const sessionsData = await sessionsResponse.json();
+                  if (sessionsData.success) {
+                    sessionCount = sessionsData.data.length;
+                  }
                 }
+              } catch (error) {
+                console.error(
+                  `Error fetching data for class ${classItem.id}:`,
+                  error,
+                );
               }
-            } catch (error) {
-              console.error(
-                `Error fetching data for class ${classItem.id}:`,
-                error,
-              );
-              // Keep default values (0) on error
+              processedClasses.push({
+                id: classItem.id,
+                subject_display: classItem.subject_name,
+                class_location: classItem.room_number,
+                class_group:
+                  classItem.branch && classItem.section
+                    ? `${classItem.branch} - ${classItem.section}`
+                    : null,
+                class_type_label: classItem.notes || "",
+                student_count: studentCount,
+                session_count: sessionCount,
+                timing_day: timing.day,
+                timing_time: formattedTime,
+                time_sort: timeSortValue,
+              });
             }
-
-            return {
-              ...classItem,
-              subject_display: classItem.subject_name,
-              formatted_time: formattedTime,
-              class_location: classItem.room_number,
-              class_group:
-                classItem.branch && classItem.section
-                  ? `${classItem.branch} - ${classItem.section}`
-                  : null,
-              time_sort: timeSortValue,
-              student_count: studentCount,
-              session_count: sessionCount,
-              class_type_label: classItem.notes || "",
-            };
-          }),
-        );
-
+          }
+        }
         setClasses(processedClasses);
       } else {
         throw new Error("API returned error");
@@ -233,7 +229,7 @@ export default function ClassesList() {
   const classesByDay = DAYS_ORDER.reduce(
     (acc, day) => {
       acc[day] = classes
-        .filter((cls) => cls.day === day)
+        .filter((cls) => cls.timing_day === day)
         .sort((a, b) => a.time_sort - b.time_sort);
       return acc;
     },
@@ -383,7 +379,7 @@ export default function ClassesList() {
                                   <div className="flex items-center gap-2">
                                     <FaClock className="w-3.5 h-3.5 text-green-600" />
                                     <span className="font-medium">
-                                      {classItem.formatted_time}
+                                      {classItem.timing_time}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">

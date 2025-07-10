@@ -36,9 +36,7 @@ export async function GET(
         subject_name: subjects.course_name,
         subject_code: subjects.course_code,
         branch: timetableEntries.branch,
-        section: timetableEntries.section,
-        day: timetableEntries.day,
-        time_slot: timetableEntries.time_slot,
+        section: timetableEntries.section
       })
       .from(classSessions)
       .innerJoin(

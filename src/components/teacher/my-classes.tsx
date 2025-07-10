@@ -18,18 +18,19 @@ import AddClassModal from "./add-class-modal";
 
 interface TeacherClass {
   id: string;
+  timetable_entry_id: string;
   subject_name: string;
   subject_code: string;
   branch: string;
   section: string;
-  day: string;
-  time_slot: string;
   room_number: string;
+  timings: { day: string; time_slot: string }[];
 }
 
 interface ProcessedClass extends TeacherClass {
   subject_display: string;
-  formatted_time: string;
+  notes?: string;
+  dayTimePairs: { day: string; time_slot: string }[];
   class_location: string;
   class_group: string | null;
 }
@@ -81,22 +82,14 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
       const result: TeacherClassesResponse = await response.json();
 
       if (result.success) {
-        // Process classes similar to upcoming classes
+        // Club timings for each class
         const processedClasses = result.data.map(
           (classItem): ProcessedClass => {
-            const timeSlot = classItem.time_slot;
-            const [startTime] = timeSlot.split("-");
-            const [hour, minute] = startTime.split(":").map(Number);
-
-            // Convert to 12-hour format
-            const period = hour >= 12 ? "PM" : "AM";
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-
             return {
               ...classItem,
               subject_display: classItem.subject_name,
-              formatted_time: formattedTime,
+              notes: (classItem as any).notes,
+              dayTimePairs: classItem.timings,
               class_location: classItem.room_number,
               class_group:
                 classItem.branch && classItem.section
@@ -105,7 +98,6 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
             };
           },
         );
-
         setClasses(processedClasses);
       } else {
         throw new Error("API returned error");
@@ -234,21 +226,25 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
                               {classItem.subject_display}
                             </h4>
                             <div className="bg-green-50 text-green-700 px-2 py-1 rounded-md text-xs font-medium">
-                              {classItem.day}
+                              {classItem.notes || "-"}
                             </div>
                           </div>
-                          {classItem.class_group && (
-                            <p className="text-sm text-gray-600 font-medium mb-2">
-                              {classItem.class_group}
-                            </p>
-                          )}
+                          {/* Day/Time pairs */}
+                          {classItem.dayTimePairs &&
+                            classItem.dayTimePairs.length > 0 && (
+                                <div className="mb-2 flex flex-col gap-1 text-sm text-gray-700 font-medium">
+                                  {classItem.dayTimePairs.map((pair, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                      <FaClock className="w-3 h-3" />
+                                      <span>
+                                        {pair.day}: <span className="text-gray-500">{pair.time_slot}</span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                            )}
                           <div className="space-y-1 text-sm text-gray-500">
-                            <div className="flex items-center gap-1.5">
-                              <FaClock className="w-3.5 h-3.5" />
-                              <span className="font-medium">
-                                {classItem.formatted_time}
-                              </span>
-                            </div>
+                            {/* Removed old time_slots display, now shown as day/time pairs above */}
                             <div className="flex items-center gap-1.5">
                               <FaMapMarkerAlt className="w-3.5 h-3.5" />
                               <span>{classItem.class_location}</span>

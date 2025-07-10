@@ -24,30 +24,34 @@ export async function GET(request: NextRequest) {
 
     // Build where conditions
     const whereConditions = [];
-    if (roomType) {
-      whereConditions.push(eq(rooms.room_type, roomType as any));
-    }
+    // By default, only return active rooms unless is_active is explicitly set
     if (isActive !== null) {
       whereConditions.push(eq(rooms.is_active, isActive === "true"));
+    } else {
+      whereConditions.push(eq(rooms.is_active, true));
+    }
+    if (roomType) {
+      whereConditions.push(eq(rooms.room_type, roomType as any));
     }
     if (building) {
       whereConditions.push(eq(rooms.building, building));
     }
 
-    let allRooms;
-    if (whereConditions.length > 0) {
-      allRooms = await db
-        .select()
-        .from(rooms)
-        .where(
-          whereConditions.length === 1
-            ? whereConditions[0]
-            : and(...whereConditions),
-        )
-        .orderBy(rooms.room_number);
-    } else {
-      allRooms = await db.select().from(rooms).orderBy(rooms.room_number);
-    }
+    // Only select fields needed for dropdown
+
+    const allRooms = await db
+      .select({
+        id: rooms.id,
+        room_number: rooms.room_number,
+        room_type: rooms.room_type,
+      })
+      .from(rooms)
+      .where(
+        whereConditions.length === 1
+          ? whereConditions[0]
+          : and(...whereConditions),
+      )
+      .orderBy(rooms.room_number);
 
     return NextResponse.json({
       success: true,

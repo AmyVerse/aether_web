@@ -120,6 +120,20 @@
       "when": 1752054656080,
       "tag": "0016_melted_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1752114672258,
+      "tag": "0017_chief_spot",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1752167305301,
+      "tag": "0018_serious_thor",
+      "breakpoints": true
     }
   ]
 }

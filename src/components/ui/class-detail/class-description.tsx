@@ -6,7 +6,6 @@ import {
   FaArrowLeft,
   FaBook,
   FaCalendarAlt,
-  FaClock,
   FaGraduationCap,
   FaMapMarkerAlt,
   FaPlus,
@@ -18,12 +17,13 @@ interface ClassDetails {
   subject_code: string;
   branch: string;
   section: string;
-  day: string;
-  time_slot: string;
+  day?: string; // fallback for legacy
+  time_slot?: string; // fallback for legacy
   room_number: string;
   academic_year: string;
   semester_type: string;
   notes?: string;
+  timings?: { day: string; time_slot: string }[]; // normalized timings
 }
 
 interface ClassDescriptionProps {
@@ -167,21 +167,22 @@ export default function ClassDescription({
                 Schedule Details
               </h3>
               <div className="grid sm:grid-cols-3">
-                <div className="flex items-center gap-3">
+                {/* Class Day and Time (combined label) */}
+                <div className="flex items-center gap-3 col-span-2 sm:col-span-2">
                   <FaCalendarAlt className="text-blue-600 w-4 h-4" />
                   <div>
-                    <p className="text-sm text-gray-500">Class Day</p>
+                    <p className="text-sm text-gray-500">Class Day and Time</p>
                     <p className="font-medium text-gray-900">
-                      {classDetails.day}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <FaClock className="text-green-600 w-4 h-4" />
-                  <div>
-                    <p className="text-sm text-gray-500">Time Slot</p>
-                    <p className="font-medium text-gray-900">
-                      {classDetails.time_slot}
+                      {Array.isArray(classDetails.timings) &&
+                      classDetails.timings.length > 0
+                        ? classDetails.timings
+                            .map(
+                              (timing) => `${timing.day} (${timing.time_slot})`,
+                            )
+                            .join(", ")
+                        : classDetails.day && classDetails.time_slot
+                          ? `${classDetails.day} (${classDetails.time_slot})`
+                          : classDetails.day || classDetails.time_slot || "-"}
                     </p>
                   </div>
                 </div>

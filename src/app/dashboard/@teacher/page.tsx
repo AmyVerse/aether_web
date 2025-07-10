@@ -44,9 +44,10 @@ export default function TeacherDashboard() {
                   const now = new Date();
                   const y = now.getFullYear();
                   const years = [
+                    `${y - 3}-${y - 2}`,
+                    `${y - 2}-${y - 1}`,
                     `${y - 1}-${y}`,
                     `${y}-${y + 1}`,
-                    `${y + 1}-${y + 2}`,
                   ];
                   return years.map((yy) => (
                     <option key={yy} value={yy}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSessionStore } from "@/store/useSessionStore";
 import { useEffect, useState } from "react";
 import {
   FaCalendarCheck,
@@ -7,7 +8,6 @@ import {
   FaClock,
   FaUsers,
 } from "react-icons/fa";
-import { useSessionStore } from "@/store/useSessionStore";
 
 interface StatCardProps {
   title: string;
@@ -62,7 +62,9 @@ export default function TeacherStats() {
       if (academicYear) params.append("academicYear", academicYear);
       if (semesterType) params.append("semesterType", semesterType);
 
-      const teacherClassesResponse = await fetch(`/api/teacher/classes?${params.toString()}`);
+      const teacherClassesResponse = await fetch(
+        `/api/teacher/classes?${params.toString()}`,
+      );
       let teacherClasses: any[] = [];
       if (teacherClassesResponse.ok) {
         const teacherData = await teacherClassesResponse.json();
@@ -70,9 +72,18 @@ export default function TeacherStats() {
           teacherClasses = teacherData.data;
         }
       }
-      // Today's classes for teacher
+      // Today's classes for teacher (support multiple timings per class)
       const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-      const todayClasses = teacherClasses.filter((c) => c.day === today);
+      let todayClassesCount = 0;
+      for (const c of teacherClasses) {
+        if (Array.isArray(c.timings) && c.timings.length > 0) {
+          if (c.timings.some((t: { day: string }) => t.day === today)) {
+            todayClassesCount++;
+          }
+        } else if (c.day === today) {
+          todayClassesCount++;
+        }
+      }
       // Total students across all teacher's classes
       let totalStudents = 0;
       for (const c of teacherClasses) {
@@ -91,7 +102,7 @@ export default function TeacherStats() {
       setStats({
         totalStudents,
         activeClasses: teacherClasses.length,
-        todayClasses: todayClasses.length,
+        todayClasses: todayClassesCount,
       });
     } catch (error) {
       console.error("Failed to fetch teacher stats:", error);

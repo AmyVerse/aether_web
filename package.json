@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "drizzle-kit generate",
+    "db:gen": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },
   "overrides": {
@@ -28,6 +28,7 @@
     "nanoid": "^5.1.5",
     "next": "^15.3.2",
     "next-auth": "^5.0.0-beta.28",
+    "papaparse": "^5.5.3",
     "pg": "^8.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -42,6 +43,7 @@
     "@types/date-fns": "^2.5.3",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^20",
+    "@types/papaparse": "^5.3.16",
     "@types/pg": "^8.15.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import { timetableEntries, users } from "@/db/schema";
+import { timetableEntries, timetableEntriesTimings, users } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -118,28 +118,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for conflicts (same room, day, time_slot, academic_year, semester_type)
-    const existingEntry = await db
-      .select()
-      .from(timetableEntries)
-      .where(
-        and(
-          eq(timetableEntries.room_id, room_id),
-          eq(timetableEntries.day, day as any),
-          eq(timetableEntries.time_slot, time_slot as any),
-          eq(timetableEntries.academic_year, academic_year),
-          eq(timetableEntries.semester_type, semester_type as any),
-        ),
-      )
-      .limit(1);
-
-    if (existingEntry.length > 0) {
-      return NextResponse.json(
-        { error: "Time slot already occupied for this room" },
-        { status: 409 },
-      );
-    }
-
     // Get current user for created_by
     const currentUser = await db
       .select()
@@ -147,29 +125,91 @@ export async function POST(request: NextRequest) {
       .where(eq(users.email, session.user.email))
       .limit(1);
 
-    // Create new timetable entry
-    const newEntry = await db
-      .insert(timetableEntries)
-      .values({
+    // 1. Check if a timetable entry with the unique fields exists
+    const whereClauses = [
+      eq(timetableEntries.academic_year, academic_year),
+      eq(timetableEntries.semester_type, semester_type as any),
+      eq(timetableEntries.subject_id, subject_id),
+      eq(timetableEntries.branch, branch as any),
+      eq(timetableEntries.section, section as any),
+      eq(timetableEntries.notes, notes),
+    ];
+    if (semester !== undefined && semester !== "") {
+      whereClauses.push(eq(timetableEntries.semester, Number(semester)));
+    }
+
+    const existingEntry = await db
+      .select()
+      .from(timetableEntries)
+      .where(and(...whereClauses))
+      .limit(1);
+
+    let timetableEntryId: string;
+    let timetableEntry;
+    if (existingEntry.length > 0) {
+      // Entry exists, use its id
+      timetableEntryId = existingEntry[0].id;
+      timetableEntry = existingEntry[0];
+    } else {
+      // Insert new timetable entry (primary/class info only)
+      const values: any = {
         academic_year,
         semester_type: semester_type as any,
-        semester:
-          semester !== undefined && semester !== "" ? Number(semester) : null,
         room_id,
         subject_id: subject_id || null,
         branch: (branch as any) || null,
         section: (section as any) || null,
-        day: day as any,
-        time_slot: time_slot as any,
-        notes: notes || null,
+        notes: notes,
         color_code: color_code || null,
         created_by: currentUser[0]?.id || null,
+      };
+      if (semester !== undefined && semester !== null && semester !== "") {
+        values.semester = Number(semester);
+      }
+      const inserted = await db
+        .insert(timetableEntries)
+        .values(values)
+        .returning();
+      timetableEntryId = inserted[0].id;
+      timetableEntry = inserted[0];
+    }
+
+    // 2. Insert into timetable_entries_timings (linking entry to day/time/room)
+    // Check for conflicts: same day, time_slot, room for this timetable_entry_id
+    const timingConflict = await db
+      .select()
+      .from(timetableEntriesTimings)
+      .where(
+        and(
+          eq(timetableEntriesTimings.timetable_entry_id, timetableEntryId),
+          eq(timetableEntriesTimings.day, day as any),
+          eq(timetableEntriesTimings.time_slot, time_slot as any),
+        ),
+      )
+      .limit(1);
+
+    if (timingConflict.length > 0) {
+      return NextResponse.json(
+        { error: "Time slot already occupied for this class" },
+        { status: 409 },
+      );
+    }
+
+    const newTiming = await db
+      .insert(timetableEntriesTimings)
+      .values({
+        timetable_entry_id: timetableEntryId,
+        day: day as any,
+        time_slot: time_slot as any,
       })
       .returning();
 
     return NextResponse.json({
       success: true,
-      data: newEntry[0],
+      data: {
+        ...timetableEntry,
+        timings: [newTiming[0]],
+      },
       message: "Timetable entry created successfully",
     });
   } catch (error) {
@@ -181,7 +221,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT update timetable entry
+// PUT update timetable entry (primary/class info only)
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
@@ -224,17 +264,14 @@ export async function PUT(request: NextRequest) {
     const updatedEntry = await db
       .update(timetableEntries)
       .set({
-        subject_id: subject_id || null,
-        branch: (branch as any) || null,
+        subject_id: subject_id,
+        branch: branch as any,
         section: (section as any) || null,
         notes: notes || null,
         color_code: color_code || null,
         updated_at: new Date(),
-        ...(semester !== undefined
-          ? {
-              semester:
-                semester === null || semester === "" ? null : Number(semester),
-            }
+        ...(semester !== undefined && semester !== null && semester !== ""
+          ? { semester: Number(semester) }
           : {}),
       })
       .where(eq(timetableEntries.id, id))
