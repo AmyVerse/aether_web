@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  useClassDetailsCache,
+  useTeacherClassesCache,
+} from "@/hooks/useDataCache";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useEffect, useState } from "react";
 import {
@@ -50,27 +54,26 @@ export default function TeacherStats() {
   const academicYear = useSessionStore((s) => s.academicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
 
+  // Cache hooks
+  const { fetchTeacherClasses, lastRefresh } = useTeacherClassesCache();
+  const { fetchClassStudents } = useClassDetailsCache();
+
   useEffect(() => {
     fetchStats();
-  }, [academicYear, semesterType]);
+  }, [academicYear, semesterType, lastRefresh]);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-      // Pass academicYear and semesterType as query params
-      const params = new URLSearchParams();
-      if (academicYear) params.append("academicYear", academicYear);
-      if (semesterType) params.append("semesterType", semesterType);
 
-      const teacherClassesResponse = await fetch(
-        `/api/teacher/classes?${params.toString()}`,
-      );
+      // Use cached teacher classes data
+      const teacherData = (await fetchTeacherClasses(
+        academicYear,
+        semesterType,
+      )) as any;
       let teacherClasses: any[] = [];
-      if (teacherClassesResponse.ok) {
-        const teacherData = await teacherClassesResponse.json();
-        if (teacherData.success) {
-          teacherClasses = teacherData.data;
-        }
+      if (teacherData.success) {
+        teacherClasses = teacherData.data;
       }
       // Today's classes for teacher (support multiple timings per class)
       const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
@@ -91,11 +94,8 @@ export default function TeacherStats() {
           totalStudents += c.student_count;
         } else {
           try {
-            const res = await fetch(`/api/teacher/classes/${c.id}/students`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success) totalStudents += data.data.length;
-            }
+            const data = (await fetchClassStudents(c.id)) as any;
+            if (data.success) totalStudents += data.data.length;
           } catch {}
         }
       }

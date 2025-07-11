@@ -1,6 +1,7 @@
 "use client";
 import TimetableGrid from "@/components/dashboard/timetable-grid";
 import { Button } from "@/components/ui/button";
+import { useInvalidateRelatedCache } from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useState } from "react";
@@ -47,6 +48,7 @@ export default function EditorDashboard() {
     setShowTimetableEntryModal(true);
   };
   const { showSuccess, showError } = useToast();
+  const { invalidateAfterTimetableOperation } = useInvalidateRelatedCache();
 
   return (
     <>
@@ -67,6 +69,7 @@ export default function EditorDashboard() {
         onCloseAction={() => setShowAddRoomModal(false)}
         onRoomAddedAction={() => {
           showSuccess("Room added successfully");
+          invalidateAfterTimetableOperation();
         }}
       />
       <TimetableEntryModal
@@ -75,6 +78,7 @@ export default function EditorDashboard() {
         onEntryAddedAction={() => {
           showSuccess("Timetable entry added successfully");
           setTimetableRefreshKey((k) => k + 1); // trigger grid refresh
+          invalidateAfterTimetableOperation();
         }}
         prefilledData={
           selectedCell

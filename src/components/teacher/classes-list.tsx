@@ -2,6 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import ContentLoader from "@/components/ui/content-loader";
+import {
+  useClassDetailsCache,
+  useSessionsCache,
+  useTeacherClassesCache,
+} from "@/hooks/useDataCache";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -74,9 +79,15 @@ export default function ClassesList() {
   const academicYear = useSessionStore((s) => s.academicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
 
+  // Cache hooks
+  const { fetchTeacherClasses: fetchCachedTeacherClasses, lastRefresh } =
+    useTeacherClassesCache();
+  const { fetchClassStudents } = useClassDetailsCache();
+  const { fetchClassSessions, invalidateSessions } = useSessionsCache();
+
   useEffect(() => {
     fetchTeacherClasses();
-  }, [sessionData, academicYear, semesterType]);
+  }, [sessionData, academicYear, semesterType, lastRefresh]);
 
   const fetchTeacherClasses = async () => {
     if (!sessionData?.user) {
@@ -86,17 +97,12 @@ export default function ClassesList() {
 
     try {
       setLoading(true);
-      // Pass academicYear and semesterType as query params
-      const params = new URLSearchParams();
-      if (academicYear) params.append("academicYear", academicYear);
-      if (semesterType) params.append("semesterType", semesterType);
-      const response = await fetch(`/api/teacher/classes?${params.toString()}`);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch teacher classes");
-      }
-
-      const result: TeacherClassesResponse = await response.json();
+      // Use cached teacher classes data
+      const result = (await fetchCachedTeacherClasses(
+        academicYear,
+        semesterType,
+      )) as any;
 
       if (result.success) {
         // For each class, create a ProcessedClass for each timing
@@ -111,27 +117,21 @@ export default function ClassesList() {
                 hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
               const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
               const timeSortValue = hour * 60 + minute;
-              // Fetch real-time student count and session count
+              // Fetch real-time student count and session count using cached data
               let studentCount = 0;
               let sessionCount = 0;
               try {
-                const studentsResponse = await fetch(
-                  `/api/teacher/classes/${classItem.id}/students`,
-                );
-                if (studentsResponse.ok) {
-                  const studentsData = await studentsResponse.json();
-                  if (studentsData.success) {
-                    studentCount = studentsData.data.length;
-                  }
+                const studentsData = (await fetchClassStudents(
+                  classItem.id,
+                )) as any;
+                if (studentsData.success) {
+                  studentCount = studentsData.data.length;
                 }
-                const sessionsResponse = await fetch(
-                  `/api/teacher/classes/${classItem.id}/sessions`,
-                );
-                if (sessionsResponse.ok) {
-                  const sessionsData = await sessionsResponse.json();
-                  if (sessionsData.success) {
-                    sessionCount = sessionsData.data.length;
-                  }
+                const sessionsData = (await fetchClassSessions(
+                  classItem.id,
+                )) as any;
+                if (sessionsData.success) {
+                  sessionCount = sessionsData.data.length;
                 }
               } catch (error) {
                 console.error(
@@ -201,6 +201,8 @@ export default function ClassesList() {
       if (response.ok) {
         const data = await response.json();
         showSuccess("Session created successfully!");
+        // Invalidate sessions cache after creating new session
+        invalidateSessions(classId);
         window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
       } else {
         const error = await response.json();

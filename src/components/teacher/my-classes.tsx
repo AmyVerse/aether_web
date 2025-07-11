@@ -3,6 +3,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ContentLoader from "@/components/ui/content-loader";
+import {
+  useInvalidateRelatedCache,
+  useTeacherClassesCache,
+} from "@/hooks/useDataCache";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -50,15 +54,17 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
   const [loading, setLoading] = useState(true);
   const { sessionData } = useCachedSession();
   const { showError, showSuccess } = useToast();
+  const { invalidateAfterClassOperation, invalidateAfterSessionOperation } =
+    useInvalidateRelatedCache();
 
   // Fetch teacher's classes from API
-
   const academicYear = useSessionStore((s) => s.academicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
+  const { fetchTeacherClasses, lastRefresh } = useTeacherClassesCache();
 
   useEffect(() => {
-    fetchTeacherClasses();
-  }, [sessionData, academicYear, semesterType]);
+    fetchTeacherClassesData();
+  }, [sessionData, academicYear, semesterType, lastRefresh]);
 
   const addClassModal = (
     <AddClassModal
@@ -70,7 +76,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     />
   );
 
-  const fetchTeacherClasses = async () => {
+  const fetchTeacherClassesData = async () => {
     if (!sessionData?.user) {
       setLoading(false);
       return;
@@ -78,23 +84,17 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
 
     try {
       setLoading(true);
-      // Pass academicYear and semesterType as query params
-      const params = new URLSearchParams({
+
+      // Use cached fetch
+      const result = (await fetchTeacherClasses(
         academicYear,
         semesterType,
-      });
-      const response = await fetch(`/api/teacher/classes?${params.toString()}`);
+      )) as TeacherClassesResponse;
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch teacher classes");
-      }
-
-      const result: TeacherClassesResponse = await response.json();
-
-      if (result.success) {
+      if (result?.success) {
         // Club timings for each class
         const processedClasses = result.data.map(
-          (classItem): ProcessedClass => {
+          (classItem: TeacherClass): ProcessedClass => {
             return {
               ...classItem,
               subject_display: classItem.subject_name,
@@ -121,8 +121,8 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
   };
 
   const handleClassAdded = () => {
-    // Refresh the classes list after adding a new class
-    fetchTeacherClasses();
+    // Invalidate related cache and refresh the classes list
+    invalidateAfterClassOperation();
   };
 
   const handleViewDetails = (classId: string) => {
@@ -148,6 +148,10 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
       if (response.ok) {
         const data = await response.json();
         showSuccess("Session created successfully!");
+
+        // Invalidate session cache for this class
+        invalidateAfterSessionOperation(classId);
+
         // Redirect to attendance page
         window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
       } else {

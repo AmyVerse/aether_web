@@ -5,6 +5,7 @@ import ClassDescription from "@/components/ui/class-detail/class-description";
 import ClassSessions from "@/components/ui/class-detail/class-sessions";
 import ClassStudents from "@/components/ui/class-detail/class-students";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { useClassDetailsCache, useSessionsCache } from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useEffect, useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
@@ -66,6 +67,18 @@ export default function ClassDetailView({
   const [loading, setLoading] = useState(true);
   const { showSuccess, showError } = useToast();
 
+  // Cache hooks
+  const {
+    fetchClassDetails: fetchCachedClassDetails,
+    fetchClassStudents: fetchCachedClassStudents,
+    invalidateClassData,
+  } = useClassDetailsCache();
+  const {
+    fetchClassSessions: fetchCachedClassSessions,
+    invalidateSessions,
+    lastRefresh: sessionsLastRefresh,
+  } = useSessionsCache();
+
   const handleBack = () => {
     if (onBackAction) {
       onBackAction();
@@ -78,12 +91,11 @@ export default function ClassDetailView({
     fetchClassDetails();
     fetchClassStudents();
     fetchClassSessions();
-  }, [classId]);
+  }, [classId, sessionsLastRefresh]);
 
   const fetchClassDetails = async () => {
     try {
-      const response = await fetch(`/api/teacher/classes/${classId}`);
-      const data = await response.json();
+      const data = (await fetchCachedClassDetails(classId)) as any;
 
       if (data.success) {
         setClassDetails(data.data);
@@ -99,8 +111,7 @@ export default function ClassDetailView({
 
   const fetchClassStudents = async () => {
     try {
-      const response = await fetch(`/api/teacher/classes/${classId}/students`);
-      const data = await response.json();
+      const data = (await fetchCachedClassStudents(classId)) as any;
 
       if (data.success) {
         setClassStudents(data.data);
@@ -114,8 +125,7 @@ export default function ClassDetailView({
 
   const fetchClassSessions = async () => {
     try {
-      const response = await fetch(`/api/teacher/classes/${classId}/sessions`);
-      const data = await response.json();
+      const data = (await fetchCachedClassSessions(classId)) as any;
 
       if (data.success) {
         setClassSessions(data.data);
@@ -125,6 +135,18 @@ export default function ClassDetailView({
     } catch (error) {
       showError("An error occurred while fetching sessions");
     }
+  };
+
+  // Cache invalidation handlers
+  const handleSessionsChange = () => {
+    invalidateSessions(classId);
+    // The component will re-fetch due to sessionsLastRefresh change
+  };
+
+  const handleStudentsChange = () => {
+    invalidateClassData(classId);
+    // Trigger immediate refresh
+    fetchClassStudents();
   };
 
   if (loading) {
@@ -173,7 +195,7 @@ export default function ClassDetailView({
             <ClassSessions
               classId={classId}
               classSessions={classSessions}
-              onSessionsChangeAction={fetchClassSessions}
+              onSessionsChangeAction={handleSessionsChange}
             />
           </div>
 
@@ -182,7 +204,7 @@ export default function ClassDetailView({
             <ClassStudents
               classId={classId}
               classStudents={classStudents}
-              onStudentsChangeAction={fetchClassStudents}
+              onStudentsChangeAction={handleStudentsChange}
             />
           </div>
         </div>

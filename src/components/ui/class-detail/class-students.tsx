@@ -3,6 +3,10 @@
 import { Button } from "@/components/ui/button";
 import Dialog from "@/components/ui/dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import {
+  useClassDetailsCache,
+  useInvalidateRelatedCache,
+} from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useState } from "react";
@@ -45,33 +49,32 @@ export default function ClassStudents({
   const [submitting, setSubmitting] = useState(false);
   const [rollNumberFilter, setRollNumberFilter] = useState("");
   const { showSuccess, showError } = useToast();
+  const { invalidateAfterStudentOperation } = useInvalidateRelatedCache();
 
   // Get academic session data from Zustand store
   const academicYear = useSessionStore((s) => s.academicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
 
+  // Use caching hooks
+  const { fetchAvailableStudents: fetchAvailableStudentsFromCache } =
+    useClassDetailsCache();
+
   const fetchAvailableStudents = async () => {
     setStudentsLoading(true);
     try {
-      // Fetch class details to get branch information
+      // Fetch class details to get branch information (using cache)
       const classResponse = await fetch(`/api/teacher/classes/${classId}`);
       const classData = await classResponse.json();
 
       if (classData.success) {
         setClassBranch(classData.data.branch || "");
-      }
-
-      if (classData.success) {
         setClassSem(classData.data.semester || 0);
       }
 
-      // Fetch available students
-      const response = await fetch(
-        `/api/teacher/classes/${classId}/available-students`,
-      );
-      const data = await response.json();
+      // Fetch available students (using cache)
+      const data = (await fetchAvailableStudentsFromCache(classId)) as any;
 
-      if (data.success) {
+      if (data?.success) {
         setAvailableStudents(data.data);
       } else {
         showError("Failed to fetch available students");
@@ -105,6 +108,9 @@ export default function ClassStudents({
         );
         setShowAddStudents(false);
         setSelectedStudents([]);
+
+        // Invalidate cache and refresh
+        invalidateAfterStudentOperation(classId);
         onStudentsChangeAction();
       } else {
         const error = await response.json();

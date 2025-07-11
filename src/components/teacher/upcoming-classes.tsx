@@ -1,6 +1,7 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ContentLoader from "@/components/ui/content-loader";
+import { useSessionsCache, useTeacherClassesCache } from "@/hooks/useDataCache";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -52,6 +53,11 @@ export default function TeacherUpcomingClasses() {
   const academicYear = useSessionStore((s) => s.academicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
 
+  // Cache hooks
+  const { fetchTeacherClasses: fetchCachedTeacherClasses, lastRefresh } =
+    useTeacherClassesCache();
+  const { invalidateSessions } = useSessionsCache();
+
   useEffect(() => {
     const fetchTodayClasses = async () => {
       if (!sessionData?.user) {
@@ -61,20 +67,12 @@ export default function TeacherUpcomingClasses() {
 
       try {
         setLoading(true);
-        // Use academicYear as-is (always full format '2024-2025')
-        const params = new URLSearchParams({
+
+        // Use cached teacher classes data
+        const result = (await fetchCachedTeacherClasses(
           academicYear,
           semesterType,
-        });
-        const response = await fetch(
-          `/api/teacher/classes?${params.toString()}`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch teacher classes");
-        }
-
-        const result: TeacherClassesResponse = await response.json();
+        )) as any;
 
         if (result.success) {
           // Get current day name
@@ -95,29 +93,31 @@ export default function TeacherUpcomingClasses() {
           const todayClasses: TodayClass[] = [];
           for (const classItem of result.data) {
             if (Array.isArray(classItem.timings)) {
-              classItem.timings.forEach((timing) => {
-                if (timing.day === currentDay) {
-                  const [startTime] = timing.time_slot.split("-");
-                  const [hour, minute] = startTime.split(":").map(Number);
-                  const period = hour >= 12 ? "PM" : "AM";
-                  const displayHour =
-                    hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                  const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-                  const classTimeInMinutes = hour * 60 + minute;
-                  todayClasses.push({
-                    id: classItem.id,
-                    subject_display: classItem.subject_name,
-                    class_location: classItem.room_number,
-                    class_group:
-                      classItem.branch && classItem.section
-                        ? `${classItem.branch} : ${classItem.section}`
-                        : null,
-                    notes: classItem.notes,
-                    time_slot: `${timing.day}: ${formattedTime}`,
-                    time_sort: classTimeInMinutes,
-                  });
-                }
-              });
+              classItem.timings.forEach(
+                (timing: { day: string; time_slot: string }) => {
+                  if (timing.day === currentDay) {
+                    const [startTime] = timing.time_slot.split("-");
+                    const [hour, minute] = startTime.split(":").map(Number);
+                    const period = hour >= 12 ? "PM" : "AM";
+                    const displayHour =
+                      hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                    const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+                    const classTimeInMinutes = hour * 60 + minute;
+                    todayClasses.push({
+                      id: classItem.id,
+                      subject_display: classItem.subject_name,
+                      class_location: classItem.room_number,
+                      class_group:
+                        classItem.branch && classItem.section
+                          ? `${classItem.branch} : ${classItem.section}`
+                          : null,
+                      notes: classItem.notes,
+                      time_slot: `${timing.day}: ${formattedTime}`,
+                      time_sort: classTimeInMinutes,
+                    });
+                  }
+                },
+              );
             }
           }
           todayClasses.sort((a, b) => a.time_sort - b.time_sort);
@@ -134,7 +134,7 @@ export default function TeacherUpcomingClasses() {
     };
 
     fetchTodayClasses();
-  }, [sessionData, academicYear, semesterType]);
+  }, [sessionData, academicYear, semesterType, lastRefresh]);
 
   const handleViewDetails = (classId: string) => {
     // Navigate to specific class detail using nanoid
@@ -159,6 +159,8 @@ export default function TeacherUpcomingClasses() {
       if (response.ok) {
         const data = await response.json();
         showSuccess("Session created successfully!");
+        // Invalidate sessions cache after creating new session
+        invalidateSessions(classId);
         // Redirect to attendance page
         window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
       } else {

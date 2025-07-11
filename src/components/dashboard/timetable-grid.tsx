@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { useTimetableCache } from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
 import { RoomData, SubjectData, TimetableEntry } from "@/types/timetable";
@@ -73,6 +74,14 @@ export default function TimetableGrid({
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const { showSuccess, showError } = useToast();
 
+  // Use caching hooks
+  const {
+    fetchTimetableData: fetchTimetableFromCache,
+    fetchRooms: fetchRoomsFromCache,
+    fetchSubjects: fetchSubjectsFromCache,
+    lastRefresh: timetableLastRefresh,
+  } = useTimetableCache();
+
   // Close export menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -113,37 +122,35 @@ export default function TimetableGrid({
   // Fetch rooms list
   const fetchRooms = useCallback(async () => {
     try {
-      const response = await fetch("/api/editor?action=rooms");
-      const data = await response.json();
+      const data = (await fetchRoomsFromCache()) as any;
 
-      if (response.ok) {
+      if (data && data.rooms) {
         setRoomsList(data.rooms || []);
         if (data.rooms.length > 0 && !selectedRoom) {
           setSelectedRoom(data.rooms[0].id);
         }
       } else {
-        showError(data.error || "Failed to fetch rooms");
+        showError(data?.error || "Failed to fetch rooms");
       }
     } catch {
       showError("Error fetching rooms");
     }
-  }, [selectedRoom, showError]);
+  }, [selectedRoom, showError, fetchRoomsFromCache]);
 
   // Fetch subjects list
   const fetchSubjects = useCallback(async () => {
     try {
-      const response = await fetch("/api/editor?action=subjects");
-      const data = await response.json();
+      const data = (await fetchSubjectsFromCache()) as any;
 
-      if (response.ok) {
+      if (data && data.subjects) {
         setSubjectsList(data.subjects || []);
       } else {
-        showError(data.error || "Failed to fetch subjects");
+        showError(data?.error || "Failed to fetch subjects");
       }
     } catch {
       showError("Error fetching subjects");
     }
-  }, [showError]);
+  }, [showError, fetchSubjectsFromCache]);
 
   useEffect(() => {
     fetchRooms();
@@ -154,26 +161,33 @@ export default function TimetableGrid({
   const fetchTimetableData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/editor?action=timetable&academic_year=${academicYear}&semester_type=${semesterType}`,
-      );
-      const data = await response.json();
-      if (response.ok) {
+      const data = (await fetchTimetableFromCache(
+        academicYear,
+        semesterType,
+      )) as any;
+
+      if (data && data.timetable) {
         // Expecting data.timetable to be an array of entries, each with: { day, timeSlot, room_id, ... }
         setTimetableData(data.timetable || []);
       } else {
-        showError(data.error || "Failed to fetch timetable");
+        showError(data?.error || "Failed to fetch timetable");
       }
     } catch {
       showError("Error fetching timetable data");
     } finally {
       setLoading(false);
     }
-  }, [academicYear, semesterType, showError]);
+  }, [academicYear, semesterType, showError, fetchTimetableFromCache]);
 
   useEffect(() => {
     fetchTimetableData();
-  }, [academicYear, semesterType, fetchTimetableData, refreshKey]);
+  }, [
+    academicYear,
+    semesterType,
+    fetchTimetableData,
+    refreshKey,
+    timetableLastRefresh,
+  ]);
 
   // Build a fast lookup map: { [day_slot_roomId]: entry }
   const timetableMap = useMemo(() => {
