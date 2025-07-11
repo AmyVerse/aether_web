@@ -1,9 +1,7 @@
 "use client";
 import ClassDetailView from "@/components/teacher/class-detail-view";
-import { Button } from "@/components/ui/button";
 import Head from "next/head";
 import { useEffect, useState } from "react";
-import { FaArrowLeft } from "react-icons/fa";
 
 interface PageProps {
   params: Promise<{

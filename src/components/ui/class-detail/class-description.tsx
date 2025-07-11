@@ -22,6 +22,7 @@ interface ClassDetails {
   room_number: string;
   academic_year: string;
   semester_type: string;
+  semester: number;
   notes?: string;
   timings?: { day: string; time_slot: string }[]; // normalized timings
 }
@@ -100,6 +101,7 @@ export default function ClassDescription({
           <Button
             onClick={handleCreateSession}
             className="flex items-center gap-2"
+            variant="success"
           >
             <FaPlus className="w-4 h-4" />
             <span className="hidden sm:inline">Create Session</span>
@@ -117,6 +119,9 @@ export default function ClassDescription({
           </span>
           <span className="bg-green-50 text-green-700 px-3 py-1.5 rounded-md font-medium text-sm">
             Section {classDetails.section}
+          </span>
+          <span className="bg-purple-50 text-orange-700 px-3 py-1.5 rounded-md font-medium text-sm">
+            Sem {classDetails.semester}
           </span>
           <span className="bg-purple-50 text-purple-700 px-3 py-1.5 rounded-md font-medium text-sm">
             {studentCount} Students
@@ -138,7 +143,7 @@ export default function ClassDescription({
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                 Academic Details
               </h3>
-              <div className="grid sm:grid-cols-2">
+              <div className="grid sm:grid-cols-2 gap-2">
                 <div className="flex items-center gap-3">
                   <FaGraduationCap className="text-indigo-600 w-4 h-4" />
                   <div>
@@ -154,7 +159,8 @@ export default function ClassDescription({
                     <p className="text-sm text-gray-500">Semester</p>
                     <p className="font-medium text-gray-900">
                       {classDetails.semester_type.charAt(0).toUpperCase() +
-                        classDetails.semester_type.slice(1)}
+                        classDetails.semester_type.slice(1)}{" "}
+                      - {classDetails.semester}
                     </p>
                   </div>
                 </div>
@@ -166,7 +172,7 @@ export default function ClassDescription({
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                 Schedule Details
               </h3>
-              <div className="grid sm:grid-cols-3">
+              <div className="grid sm:grid-cols-3 gap-2">
                 {/* Class Day and Time (combined label) */}
                 <div className="flex items-center gap-3 col-span-2 sm:col-span-2">
                   <FaCalendarAlt className="text-blue-600 w-4 h-4" />

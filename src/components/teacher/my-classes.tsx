@@ -211,7 +211,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="w-full">
+            <div className="w-full max-sm:max-h-[40rem] max-sm:overflow-y-scroll">
               {classes.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {classes.map((classItem) => (

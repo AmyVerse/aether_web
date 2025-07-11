@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"; // Adjust if using a custom But
 import { useCachedSession } from "@/hooks/useSessionCache";
 import Papa from "papaparse";
 import { useEffect, useRef, useState } from "react";
-import { FaArrowUp, FaFileCsv } from "react-icons/fa";
+import { FaFileCsv, FaFileExcel } from "react-icons/fa";
 
 interface SessionCol {
   id: string;
@@ -66,12 +66,8 @@ export default function AttendanceReportPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className="min-h-screen bg-gray-50 relative sm:w-[calc(100vw-19rem)] w-[calc(100vw-1rem)] overflow-x-hidden">
       <div className="bg-white border-b border-gray-200 px-4 py-4">
         <h1 className="text-3xl font-semibold font-[poppins] text-gray-900">
           Attendance Reports
@@ -81,7 +77,7 @@ export default function AttendanceReportPage() {
         </p>
       </div>
 
-      <div className="p-4 sm:p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6 overflow-x-hidden">
         {loading ? (
           <div className="text-center py-12 text-gray-500">
             Loading report...
@@ -152,96 +148,106 @@ export default function AttendanceReportPage() {
                 };
 
                 return (
-                  <div
-                    key={classId}
-                    className="bg-white rounded-xl shadow border border-gray-200 p-4"
-                  >
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold text-blue-700">
-                        {meta.subject_name ? (
-                          <>
-                            {meta.subject_name} : {meta.branch} {meta.section}{" "}
-                            (Sem {meta.semester})
-                          </>
-                        ) : (
-                          <>Class: {classId}</>
-                        )}
-                      </h2>
-                      <Button
-                        onClick={exportClassToCSV}
-                        className="bg-blue-600 text-white text-sm flex items-center"
-                        width="w-fit"
-                        height="h-5"
-                        variant="primary"
-                      >
-                        <FaFileCsv className="mr-2" /> Export CSV
-                      </Button>
+                  <div key={classId} className="space-y-4 overflow-hidden">
+                    {/* Header Section */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <div className="flex justify-between gap-2 items-center">
+                        <h2 className="text-xl font-semibold text-blue-700">
+                          {meta.subject_name ? (
+                            <>
+                              {meta.subject_name} : {meta.branch} {meta.section}{" "}
+                              (Sem {meta.semester})
+                            </>
+                          ) : (
+                            <>Class: {classId}</>
+                          )}
+                        </h2>
+                        <Button
+                          onClick={exportClassToCSV}
+                          className="bg-blue-600 text-white sm:text-sm text-xs flex items-center"
+                          width="w-fit"
+                          height="h-4"
+                          variant="primary"
+                        >
+                          <FaFileExcel className="mr-2" /> Export
+                        </Button>
+                      </div>
                     </div>
-                    <div className="w-full overflow-x-auto">
-                      <table className="min-w-[600px] border text-xs sm:text-sm">
-                        <thead>
-                          <tr>
-                            <th className="border px-2 py-1 bg-gray-100 whitespace-nowrap">
-                              Roll No
-                            </th>
-                            <th className="border px-2 py-1 bg-gray-100 whitespace-nowrap">
-                              Name
-                            </th>
-                            {classReport.sessions.map((s: SessionCol) => (
-                              <th
-                                key={s.id}
-                                className="border px-2 py-1 bg-gray-50 whitespace-nowrap text-ellipsis overflow-hidden"
-                                style={{ width: 80 }}
-                              >
-                                {(() => {
-                                  const d = new Date(s.date);
-                                  if (isNaN(d.getTime())) return s.date;
-                                  const day = String(d.getDate()).padStart(
-                                    2,
-                                    "0",
-                                  );
-                                  const month = String(
-                                    d.getMonth() + 1,
-                                  ).padStart(2, "0");
-                                  const year = d.getFullYear();
-                                  return `${day}/${month}/${year}`;
-                                })()}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {classReport.students.map((student: StudentRow) => (
-                            <tr key={student.student_id}>
-                              <td className="border px-2 py-1 font-mono whitespace-nowrap">
-                                {student.roll_number}
-                              </td>
-                              <td className="border px-2 py-1 whitespace-nowrap">
-                                {student.name}
-                              </td>
-                              {classReport.sessions.map((s: SessionCol) => (
-                                <td
-                                  key={s.id}
-                                  className="border px-2 py-1 text-center whitespace-nowrap min-w-[70px] max-w-[120px] text-ellipsis overflow-hidden"
-                                  style={{ width: 80 }}
-                                >
-                                  {student[s.id] === 1 ? (
-                                    <span className="text-green-600 font-bold">
-                                      1
-                                    </span>
-                                  ) : student[s.id] === 0 ? (
-                                    <span className="text-red-600 font-bold">
-                                      0
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+
+                    {/* Table Section */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                      <div className="overflow-auto w-full">
+                        <div className="overflow-x-scroll w-full">
+                          <table className="w-full border-collapse text-xs sm:text-sm">
+                            <thead>
+                              <tr>
+                                <th className="border px-2 py-1 bg-gray-100 whitespace-nowrap">
+                                  Roll No
+                                </th>
+                                <th className="border px-2 py-1 bg-gray-100 whitespace-nowrap">
+                                  Name
+                                </th>
+                                {classReport.sessions.map((s: SessionCol) => (
+                                  <th
+                                    key={s.id}
+                                    className="border px-2 py-1 bg-gray-50 whitespace-nowrap text-center min-w-[80px]"
+                                  >
+                                    {(() => {
+                                      const d = new Date(s.date);
+                                      if (isNaN(d.getTime())) return s.date;
+                                      const day = String(d.getDate()).padStart(
+                                        2,
+                                        "0",
+                                      );
+                                      const month = String(
+                                        d.getMonth() + 1,
+                                      ).padStart(2, "0");
+                                      const year = d.getFullYear();
+                                      return `${day}/${month}/${year}`;
+                                    })()}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {classReport.students.map(
+                                (student: StudentRow) => (
+                                  <tr key={student.student_id}>
+                                    <td className="border px-2 py-1 font-mono whitespace-nowrap">
+                                      {student.roll_number}
+                                    </td>
+                                    <td className="border px-2 py-1 whitespace-nowrap">
+                                      {student.name}
+                                    </td>
+                                    {classReport.sessions.map(
+                                      (s: SessionCol) => (
+                                        <td
+                                          key={s.id}
+                                          className="border px-2 py-1 text-center whitespace-nowrap min-w-[80px]"
+                                        >
+                                          {student[s.id] === 1 ? (
+                                            <span className="text-green-600 font-bold">
+                                              1
+                                            </span>
+                                          ) : student[s.id] === 0 ? (
+                                            <span className="text-red-600 font-bold">
+                                              0
+                                            </span>
+                                          ) : (
+                                            <span className="text-gray-400">
+                                              -
+                                            </span>
+                                          )}
+                                        </td>
+                                      ),
+                                    )}
+                                  </tr>
+                                ),
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -251,15 +257,8 @@ export default function AttendanceReportPage() {
         )}
       </div>
 
-      {/* Scroll To Top Button */}
-      {showScrollButton && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700"
-        >
-          <FaArrowUp />
-        </button>
-      )}
+      {/* spacer */}
+      <div className="h-20 sm:h-24 md:h-32 lg:h-40"></div>
     </div>
   );
 }

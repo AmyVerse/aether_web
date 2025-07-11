@@ -195,10 +195,12 @@ export default function ClassStudents({
           </h2>
           <Button
             onClick={openAddStudentsModal}
-            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+            className="flex items-center gap-2 bg-black text-white"
+            variant="success"
           >
             <FaPlus className="w-4 h-4" />
-            Add Students
+            <span className="hidden sm:inline">Add Students</span>
+            <span className="sm:hidden">Students</span>
           </Button>
         </div>
 
@@ -217,7 +219,7 @@ export default function ClassStudents({
             </Button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 max-sm:max-h-[40rem] max-sm:overflow-y-scroll">
             {classStudents.map((classStudent) => (
               <div
                 key={classStudent.id}
@@ -237,12 +239,12 @@ export default function ClassStudents({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="text-right">
+                  {/* <div className="text-right">
                     <p className="text-xs text-gray-500">Enrolled</p>
                     <p className="text-xs font-medium text-gray-700">
                       {new Date(classStudent.enrolled_at).toLocaleDateString()}
                     </p>
-                  </div>
+                  </div> */}
                   <Button
                     onClick={() => handleRemoveStudent(classStudent.id)}
                     variant="outline"
@@ -255,6 +257,8 @@ export default function ClassStudents({
             ))}
           </div>
         )}
+        {/* spacer */}
+        <div className="h-20 sm:h-24 md:h-32 lg:h-40"></div>
       </div>
 
       {/* Add Students Modal */}

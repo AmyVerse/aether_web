@@ -88,6 +88,9 @@ export default function TeacherDashboard() {
             <MyClasses />
           </div>
         </div>
+        
+        {/* spacer */}
+        <div className="h-20 sm:h-24 md:h-32 lg:h-40"></div>
       </div>
     </>
   );

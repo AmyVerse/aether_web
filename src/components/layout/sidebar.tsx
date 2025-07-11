@@ -12,6 +12,7 @@ import {
   FaRegCalendarAlt,
   FaRegChartBar,
   FaRegEnvelope,
+  FaRegQuestionCircle,
   FaRegUser,
   FaSignOutAlt,
 } from "react-icons/fa";
@@ -292,36 +293,41 @@ export default function Sidebar({
           </div>
 
           {/* Sign Out */}
-          <div className="min-h-[44px] flex items-center">
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
+            <div className="min-h-[44px] flex items-center">
+            <Link
+              href="/faqs"
+              onClick={onClose}
+              className="w-full"
+            >
+              <button
               className={cn(
-                "flex items-center w-full rounded-xl text-sm font-medium text-red-600 hover:bg-red-50/80 transition-all duration-200 group border border-transparent hover:border-red-200/40 relative",
+                "flex items-center w-full rounded-xl text-sm font-medium transition-all duration-200 group border border-transparent relative",
                 isCollapsed
-                  ? "md:justify-center md:px-2 md:py-3"
-                  : "gap-4 px-4 py-3",
+                ? "md:justify-center md:px-2 md:py-3"
+                : "gap-4 px-4 py-3",
                 "gap-4 px-4 py-3", // Mobile always shows full
               )}
-              title={isCollapsed ? "Sign Out" : undefined}
-            >
-              <FaSignOutAlt className="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors duration-200 flex-shrink-0" />
+              title={isCollapsed ? "FAQs" : undefined}
+              >
+              <FaRegQuestionCircle className="w-5 h-5 transition-colors duration-200 flex-shrink-0" />
               <span
                 className={cn(
-                  "font-medium tracking-wide transition-all duration-300",
-                  isCollapsed ? "md:hidden" : "block",
+                "font-medium tracking-wide transition-all duration-300",
+                isCollapsed ? "md:hidden" : "block",
                 )}
               >
-                Sign Out
+                FAQs
               </span>
 
               {/* Tooltip for collapsed state */}
               {isCollapsed && (
                 <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999]">
-                  Sign Out
+                FAQs
                 </div>
               )}
-            </button>
-          </div>
+              </button>
+            </Link>
+            </div>
 
           {/* Footer */}
           <div className="hidden min-h-[56px] md:flex items-center justify-center">

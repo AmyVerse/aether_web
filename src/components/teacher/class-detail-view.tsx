@@ -20,6 +20,7 @@ interface ClassDetails {
   room_number: string;
   academic_year: string;
   semester_type: string;
+  semester: number;
   notes?: string;
   timings?: { day: string; time_slot: string }[]; // normalized timings
 }

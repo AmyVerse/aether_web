@@ -356,12 +356,9 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
               year: "numeric",
             })}
           </span>
-          <span className="bg-green-50 text-green-700 px-3 py-1.5 rounded-md font-medium text-sm flex items-center gap-1">
+          <span className="bg-violet-50 text-violet-700 px-3 py-1.5 rounded-md font-medium text-sm flex items-center gap-1">
             <FaClock className="w-3 h-3" />
             {sessionDetails.start_time}
-          </span>
-          <span className="bg-purple-50 text-purple-700 px-3 py-1.5 rounded-md font-medium text-sm">
-            {students.length} Students
           </span>
           <span
             className={`px-3 py-1.5 rounded-md font-medium text-sm ${
@@ -380,7 +377,7 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
         <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
           {/* Stats Grid - Minimal */}
           <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-gray-100/60">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex sm:flex-row">
               <div className="grid grid-cols-4 gap-4">
                 <div className="text-center bg-green-50 p-2 rounded-lg">
                   <p className="text-2xl font-bold text-green-600">
@@ -413,14 +410,14 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
                 <Button
                   onClick={markAllPresent}
                   variant="outline"
-                  className="px-3 py-1.5 text-sm bg-green-600 border-green-600 hover:bg-green-700/20"
+                  className="text-sm bg-green-600 border-green-600 hover:bg-green-600/20"
                 >
                   All Present
                 </Button>
                 <Button
                   onClick={markAllAbsent}
                   variant="outline"
-                  className="px-3 py-1.5 text-sm bg-red-600 border-red-600 hover:bg-red-700/20"
+                  className="text-sm bg-red-600 border-red-600 hover:bg-red-700/20"
                 >
                   All Absent
                 </Button>
@@ -707,6 +704,9 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
           </Button>
         </div>
       </div>
+
+      {/* spacer */}
+      <div className="h-20 sm:h-24 md:h-32 lg:h-40"></div>
     </div>
   );
 }

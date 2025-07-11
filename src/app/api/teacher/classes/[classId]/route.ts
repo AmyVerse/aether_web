@@ -25,6 +25,7 @@ export async function GET(
         room_number: rooms.room_number,
         academic_year: timetableEntries.academic_year,
         semester_type: timetableEntries.semester_type,
+        semester: timetableEntries.semester,
         notes: classTeachers.notes,
         timetable_entry_id: classTeachers.timetable_entry_id,
       })
