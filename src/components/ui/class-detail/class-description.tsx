@@ -101,7 +101,6 @@ export default function ClassDescription({
           <Button
             onClick={handleCreateSession}
             className="flex items-center gap-2"
-            variant="success"
           >
             <FaPlus className="w-4 h-4" />
             <span className="hidden sm:inline">Create Session</span>

@@ -177,37 +177,59 @@ export default function ClassSessions({
     return `${day} ${month}, ${year} (${weekday})`;
   };
 
-  // Edit Session Modal (moved outside return, visually larger, no End Time field)
+  // Edit Session Modal - Improved design based on AddClassModal
   const editSessionModal = editingSession && (
     <Dialog
       isOpen={!!editingSession}
       onClose={() => setEditingSession(null)}
       title="Edit Session"
+      description="Modify session details and settings"
       showActions={false}
+      size="xl"
     >
       <form
-        className="space-y-5 p-2 sm:p-6"
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           handleEditFormSubmit();
         }}
       >
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date
-          </label>
-          <input
-            type="date"
-            name="date"
-            value={editForm.date}
-            onChange={handleEditFormChange}
-            className="w-full border rounded-lg px-3 py-2 text-base"
-            required
-          />
+        {/* Session Info Section */}
+        <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2 mb-6">
+          <div className="text-sm text-blue-700">
+            Session ID: <span className="font-mono">{editingSession.id}</span>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+
+        {/* Form Fields Layout - 2 columns for better organization */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Date Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Session Date
+            </label>
+            <input
+              type="date"
+              name="date"
+              value={editForm.date}
+              onChange={handleEditFormChange}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:bg-white transition-colors"
+              required
+            />
+            {editForm.date && (
+              <p className="text-sm text-gray-800 mt-1">
+                {new Date(editForm.date).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            )}
+          </div>
+
+          {/* Start Time Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Start Time
             </label>
             <input
@@ -215,58 +237,67 @@ export default function ClassSessions({
               name="start_time"
               value={editForm.start_time}
               onChange={handleEditFormChange}
-              className="w-full border rounded-lg px-3 py-2 text-base"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:bg-white transition-colors"
               required
             />
           </div>
         </div>
+
+        {/* Status Field */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Status
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Session Status
           </label>
           <select
             name="status"
             value={editForm.status}
             onChange={handleEditFormChange}
-            className="w-full border rounded-lg px-3 py-2 text-base"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:bg-white transition-colors"
           >
-            <option value="Scheduled">Scheduled</option>
-            <option value="Completed">Completed</option>
+            <option value="Scheduled">📅 Scheduled</option>
+            <option value="Completed">✅ Completed</option>
           </select>
         </div>
+
+        {/* Notes Field */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Notes
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Session Notes
           </label>
           <textarea
             name="notes"
             value={editForm.notes}
             onChange={handleEditFormChange}
-            className="w-full border rounded-lg px-3 py-2 text-base"
+            placeholder="Add any notes about this session..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base bg-gray-300 transition-colors"
             rows={3}
           />
         </div>
-        <div className="flex gap-2 mt-6">
+
+        {/* Action Buttons - Enhanced styling */}
+        <div className="flex justify-between pt-3 border-t border-gray-200">
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-base"
+            className="flex px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 text-base font-medium shadow-sm hover:shadow-md"
           >
-            Delete
+            Delete Session
           </button>
-          <button
-            type="button"
-            onClick={() => setEditingSession(null)}
-            className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-base"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-base"
-          >
-            Save
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setEditingSession(null)}
+              className="px-3 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 text-base font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 text-base font-medium shadow-sm hover:shadow-md"
+            >
+              Save Changes
+            </button>
+          </div>
         </div>
       </form>
     </Dialog>
@@ -285,6 +316,7 @@ export default function ClassSessions({
           confirmText="Delete"
           cancelText="Cancel"
           confirmVariant="destructive"
+          size="md"
           onConfirm={handleDeleteSession}
         />
         <div className="flex justify-between items-center mb-5">
@@ -295,7 +327,6 @@ export default function ClassSessions({
           <Button
             onClick={handleCreateSession}
             className="flex items-center gap-2"
-            variant="success"
           >
             <FaPlus className="w-4 h-4" />
             <span className="hidden sm:inline">Create Session</span>
@@ -323,7 +354,7 @@ export default function ClassSessions({
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 max-sm:max-h-[40rem] max-sm:overflow-y-scroll">
+          <div className="flex flex-col gap-3 max-h-[40rem] sm:max-h-[30rem] overflow-y-scroll">
             {sortedSessions.map((session) => (
               <div
                 key={session.id}
@@ -367,7 +398,7 @@ export default function ClassSessions({
                   </Button>
                   <Button
                     onClick={() => handleViewSession(session.id)}
-                    variant="info"
+                    variant="success"
                     className="text-xs sm:text-sm px-2 sm:px-3 py-1"
                   >
                     {session.status === "Completed"

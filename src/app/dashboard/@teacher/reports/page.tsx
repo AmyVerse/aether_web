@@ -67,7 +67,7 @@ export default function AttendanceReportPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 relative sm:w-[calc(100vw-19rem)] w-[calc(100vw-1rem)] overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
       <div className="bg-white border-b border-gray-200 px-4 py-4">
         <h1 className="text-3xl font-semibold font-[poppins] text-gray-900">
           Attendance Reports
@@ -176,7 +176,7 @@ export default function AttendanceReportPage() {
 
                     {/* Table Section */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                      <div className="overflow-auto w-full">
+                      <div className="overflow-auto sm:w-[calc(100vw-19rem)] w-[calc(100vw-4rem)]">
                         <div className="overflow-x-scroll w-full">
                           <table className="w-full border-collapse text-xs sm:text-sm">
                             <thead>

@@ -309,7 +309,7 @@ export default function Sidebar({
               )}
               title={isCollapsed ? "FAQs" : undefined}
               >
-              <FaRegQuestionCircle className="w-5 h-5 transition-colors duration-200 flex-shrink-0" />
+              <FaRegQuestionCircle className="w-5 h-5 transition-colors text-gray-400 hover:text-black duration-200 flex-shrink-0" />
               <span
                 className={cn(
                 "font-medium tracking-wide transition-all duration-300",

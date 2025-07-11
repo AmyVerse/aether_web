@@ -219,7 +219,7 @@ export default function TeacherUpcomingClasses() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto max-sm:max-h-[40rem] max-sm:overflow-y-scroll">
+        <div className="overflow-x-auto max-sm:max-max-h-[40rem] max-sm:overflow-y-scroll">
           <div
             className={`flex gap-4 sm:${classes.length > 1 ? "min-w-max" : ""} flex-col sm:flex-row`}
           >

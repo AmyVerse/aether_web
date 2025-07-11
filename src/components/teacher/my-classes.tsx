@@ -60,6 +60,16 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     fetchTeacherClasses();
   }, [sessionData, academicYear, semesterType]);
 
+  const addClassModal = (
+    <AddClassModal
+      isOpen={isAddModalOpen}
+      onCloseAction={() => {
+        setIsAddModalOpen(false);
+        handleClassAdded();
+      }}
+    />
+  );
+
   const fetchTeacherClasses = async () => {
     if (!sessionData?.user) {
       setLoading(false);
@@ -165,16 +175,6 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
     );
   }
 
-  const addClassModal = (
-    <AddClassModal
-      isOpen={isAddModalOpen}
-      onCloseAction={() => {
-        setIsAddModalOpen(false);
-        handleClassAdded();
-      }}
-    />
-  );
-
   return (
     <>
       {addClassModal}
@@ -211,7 +211,7 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="w-full max-sm:max-h-[40rem] max-sm:overflow-y-scroll">
+            <div className="w-full max-sm:max-max-h-[40rem] max-sm:overflow-y-scroll">
               {classes.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {classes.map((classItem) => (
@@ -232,16 +232,22 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
                           {/* Day/Time pairs */}
                           {classItem.dayTimePairs &&
                             classItem.dayTimePairs.length > 0 && (
-                                <div className="mb-2 flex flex-col gap-1 text-sm text-gray-700 font-medium">
-                                  {classItem.dayTimePairs.map((pair, idx) => (
-                                    <div key={idx} className="flex items-center gap-2">
-                                      <FaClock className="w-3 h-3" />
-                                      <span>
-                                        {pair.day}: <span className="text-gray-500">{pair.time_slot}</span>
+                              <div className="mb-2 flex flex-col gap-1 text-sm text-gray-700 font-medium">
+                                {classItem.dayTimePairs.map((pair, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <FaClock className="w-3 h-3" />
+                                    <span>
+                                      {pair.day}:{" "}
+                                      <span className="text-gray-500">
+                                        {pair.time_slot}
                                       </span>
-                                    </div>
-                                  ))}
-                                </div>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           <div className="space-y-1 text-sm text-gray-500">
                             {/* Removed old time_slots display, now shown as day/time pairs above */}
