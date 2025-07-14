@@ -72,6 +72,7 @@ export default function ClassDetailView({
     fetchClassDetails: fetchCachedClassDetails,
     fetchClassStudents: fetchCachedClassStudents,
     invalidateClassData,
+    lastRefresh: studentsLastRefresh,
   } = useClassDetailsCache();
   const {
     fetchClassSessions: fetchCachedClassSessions,
@@ -91,7 +92,7 @@ export default function ClassDetailView({
     fetchClassDetails();
     fetchClassStudents();
     fetchClassSessions();
-  }, [classId, sessionsLastRefresh]);
+  }, [classId, sessionsLastRefresh, studentsLastRefresh]);
 
   const fetchClassDetails = async () => {
     try {
@@ -145,8 +146,7 @@ export default function ClassDetailView({
 
   const handleStudentsChange = () => {
     invalidateClassData(classId);
-    // Trigger immediate refresh
-    fetchClassStudents();
+    // The component will re-fetch due to studentsLastRefresh change
   };
 
   if (loading) {

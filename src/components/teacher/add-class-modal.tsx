@@ -1,6 +1,7 @@
 import Combobox from "@/components/ui/combobox";
 import Dialog from "@/components/ui/dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { useTeacherClassesCache } from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useEffect, useState } from "react";
@@ -48,6 +49,9 @@ export default function AddClassModal({
   const [semester, setSemester] = useState(1);
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
+
+  // Cache hooks
+  const { invalidateTeacherClasses } = useTeacherClassesCache();
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedSemesterType, setSelectedSemesterType] = useState("");
   const [selectedSemesterNumber, setSelectedSemesterNumber] = useState("");
@@ -198,6 +202,8 @@ export default function AddClassModal({
 
       if (response.ok) {
         showSuccess("Class added successfully!");
+        // Invalidate teacher classes cache to trigger refresh
+        invalidateTeacherClasses();
         handleClose();
       } else {
         const error = await response.json();

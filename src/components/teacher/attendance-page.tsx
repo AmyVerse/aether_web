@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { useSessionsCache } from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -59,9 +58,6 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
   const { showSuccess, showError } = useToast();
   const router = useRouter();
 
-  // Cache hooks
-  const { fetchSessionStudents } = useSessionsCache();
-
   useEffect(() => {
     fetchStudentsAndSession();
   }, [sessionId]);
@@ -80,7 +76,10 @@ export default function AttendancePage({ sessionId }: AttendancePageProps) {
 
   const fetchStudentsAndSession = async () => {
     try {
-      const data = (await fetchSessionStudents(sessionId)) as any;
+      const response = await fetch(
+        `/api/teacher/sessions/${sessionId}/students`,
+      );
+      const data = await response.json();
 
       if (data.success) {
         setSessionDetails(data.data.session);

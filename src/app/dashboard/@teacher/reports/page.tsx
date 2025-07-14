@@ -177,7 +177,7 @@ export default function AttendanceReportPage() {
                     {/* Table Section */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                       <div className="overflow-auto sm:w-[calc(100vw-19rem)] w-[calc(100vw-4rem)]">
-                        <div className="overflow-x-scroll w-full">
+                        <div className="overflow-x-scroll max-h-[40rem] sm:max-h-[40rem] overflow-y-scroll w-full">
                           <table className="w-full border-collapse text-xs sm:text-sm">
                             <thead>
                               <tr>

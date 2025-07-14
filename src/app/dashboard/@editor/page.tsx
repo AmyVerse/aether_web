@@ -1,105 +1,30 @@
 "use client";
-import TimetableGrid from "@/components/dashboard/timetable-grid";
-import { Button } from "@/components/ui/button";
-import { useInvalidateRelatedCache } from "@/hooks/useDataCache";
-import { useToast } from "@/hooks/useToast";
+
+import ClassroomAllocationTable from "@/components/editor/classroom-allocation-table";
+import TimetableGrid from "@/components/editor/timetable-grid";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useState } from "react";
-import {
-  FaChalkboardTeacher,
-  FaDoorOpen,
-  FaUserGraduate,
-} from "react-icons/fa";
-
-// Import the modals we'll create
-import { AddRoomModal } from "@/components/editor/add-room-modal";
-import AddStudentModal from "@/components/editor/add-student-modal";
-import { AddTeacherModal } from "@/components/editor/add-teacher-modal";
-import { TimetableEntryModal } from "@/components/editor/timetable-entry-modal";
-import Head from "next/head";
 
 export default function EditorDashboard() {
-  // Zustand for global session state
   const academicYear = useSessionStore((s) => s.academicYear);
   const setAcademicYear = useSessionStore((s) => s.setAcademicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
   const setSemesterType = useSessionStore((s) => s.setSemesterType);
-  const [currentView, setCurrentView] = useState<"timetable" | "overview">(
-    "timetable",
+  const [activeTab, setActiveTab] = useState<"allocations" | "timetable">(
+    "allocations",
   );
-
-  // Modal states
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
-  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
-  const [showTimetableEntryModal, setShowTimetableEntryModal] = useState(false);
-  const [selectedCell, setSelectedCell] = useState<{
-    day: string;
-    timeSlot: string;
-    roomId?: string;
-  } | null>(null);
-
-  // Add a state to trigger TimetableGrid refresh
-  const [timetableRefreshKey, setTimetableRefreshKey] = useState(0);
-
-  // Handle timetable cell click
-  const handleCellClick = (day: string, timeSlot: string, roomId?: string) => {
-    setSelectedCell({ day, timeSlot, roomId });
-    setShowTimetableEntryModal(true);
-  };
-  const { showSuccess, showError } = useToast();
-  const { invalidateAfterTimetableOperation } = useInvalidateRelatedCache();
 
   return (
     <>
-      {/* Modals */}
-      <AddStudentModal
-        isOpen={showAddStudentModal}
-        onCloseAction={() => setShowAddStudentModal(false)}
-      />
-      <AddTeacherModal
-        isOpen={showAddTeacherModal}
-        onCloseAction={() => setShowAddTeacherModal(false)}
-        onTeacherAddedAction={() => {
-          showSuccess("Teacher added successfully");
-        }}
-      />
-      <AddRoomModal
-        isOpen={showAddRoomModal}
-        onCloseAction={() => setShowAddRoomModal(false)}
-        onRoomAddedAction={() => {
-          showSuccess("Room added successfully");
-          invalidateAfterTimetableOperation();
-        }}
-      />
-      <TimetableEntryModal
-        isOpen={showTimetableEntryModal}
-        onCloseAction={() => setShowTimetableEntryModal(false)}
-        onEntryAddedAction={() => {
-          showSuccess("Timetable entry added successfully");
-          setTimetableRefreshKey((k) => k + 1); // trigger grid refresh
-          invalidateAfterTimetableOperation();
-        }}
-        prefilledData={
-          selectedCell
-            ? {
-                day: selectedCell.day,
-                timeSlot: selectedCell.timeSlot,
-              }
-            : undefined
-        }
-      />
-      <Head>
-        <title>Dashboard | Aether</title>
-      </Head>
       <section>
+        {/* Page Title - Header-like appearance */}
         <div className="bg-white border-b border-gray-200 px-3 sm:px-4 md:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h1 className="text-3xl font-semibold font-[poppins] text-gray-900">
               Dashboard
             </h1>
             <p className="text-sm font-[manrope] text-gray-600 mt-1">
-              Welcome to your editor dashboard
+              Manage classroom allocations and timetable scheduling
             </p>
           </div>
           {/* Academic Year & Semester Filter */}
@@ -148,46 +73,37 @@ export default function EditorDashboard() {
             </div>
           </div>
         </div>
-        {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-end px-4 py-3 rounded-lg mb-8">
-          {/* Quick Actions */}
-          <div className="flex items-end gap-2 w-full sm:w-auto justify-end">
-            <Button
-              onClick={() => setShowAddStudentModal(true)}
-              variant="outline"
-              width="auto"
-              padding="px-3 py-2"
-              font="text-sm"
+
+        {/* Tabs Navigation */}
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8 pt-6">
+          <div className="flex space-x-1 border-b border-gray-200 mb-6">
+            <button
+              onClick={() => setActiveTab("allocations")}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === "allocations"
+                  ? "bg-blue-100 text-blue-700 border-b-2 border-blue-500"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
             >
-              <FaUserGraduate className="mr-2" /> Add Student
-            </Button>
-            <Button
-              onClick={() => setShowAddTeacherModal(true)}
-              variant="outline"
-              width="auto"
-              padding="px-3 py-2"
-              font="text-sm"
+              Classroom Allocations
+            </button>
+            <button
+              onClick={() => setActiveTab("timetable")}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === "timetable"
+                  ? "bg-blue-100 text-blue-700 border-b-2 border-blue-500"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
             >
-              <FaChalkboardTeacher className="mr-2" /> Add Teacher
-            </Button>
-            <Button
-              onClick={() => setShowAddRoomModal(true)}
-              variant="outline"
-              width="auto"
-              padding="px-3 py-2"
-              font="text-sm"
-            >
-              <FaDoorOpen className="mr-2" /> Add Room
-            </Button>
+              Timetable Grid
+            </button>
           </div>
         </div>
-        {/* Main Content */}
-        <section className="p-3 sm:p-4 md:p-6 lg:p-8">
-          <TimetableGrid
-            onCellClick={handleCellClick}
-            refreshKey={timetableRefreshKey}
-          />
-        </section>
+
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8 pb-6">
+          {activeTab === "allocations" && <ClassroomAllocationTable />}
+          {activeTab === "timetable" && <TimetableGrid />}
+        </div>
       </section>
     </>
   );

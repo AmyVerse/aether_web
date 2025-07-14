@@ -134,6 +134,8 @@ export default function ClassStudents({
 
       if (response.ok) {
         showSuccess("Student removed successfully!");
+        // Invalidate cache and refresh
+        invalidateAfterStudentOperation(classId);
         onStudentsChangeAction();
       } else {
         const error = await response.json();
@@ -215,10 +217,6 @@ export default function ClassStudents({
 
     return branchMatches && yearMatches;
   });
-
-  const otherStudents = availableStudents.filter(
-    (student) => !suggestedStudents.includes(student),
-  );
 
   // Filter all students based on roll number input
   const filteredStudents = availableStudents.filter((student) =>

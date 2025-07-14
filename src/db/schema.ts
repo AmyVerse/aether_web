@@ -239,17 +239,22 @@ export const dayEnum = pgEnum("day_enum", [
   "Saturday",
 ]);
 
+export const dayHalfEnum = pgEnum("day_half_enum", [
+  "first_half", // 8:00 AM - 1:00 PM
+  "second_half", // 1:00 PM - 6:00 PM
+]);
+
 export const timeSlotEnum = pgEnum("time_slot_enum", [
   "8:00-8:55",
   "9:00-9:55",
   "10:00-10:55",
   "11:00-11:55",
   "12:00-12:55",
-  "13:00-13:55",
-  "14:00-14:55",
-  "15:00-15:55",
-  "16:00-16:55",
-  "17:00-17:55",
+  "13:00-13:55", // 1:00-1:55 PM
+  "14:00-14:55", // 2:00-2:55 PM
+  "15:00-15:55", // 3:00-3:55 PM
+  "16:00-16:55", // 4:00-4:55 PM
+  "17:00-17:55", // 5:00-5:55 PM
 ]);
 
 // Rooms Master Table - All classrooms and labs with IDs
@@ -265,63 +270,118 @@ export const rooms = pgTable("rooms", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-// Central Timetable Table - Each cell gets a separate entry (total ~600 per semester)
+// STEP 1: Classroom/Lab Allocation Table - Editor allocates rooms to branch+section+semester
+export const classroomAllocations = pgTable(
+  "classroom_allocations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    // Academic context
+    academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2025-2026"
+    semester_type: semesterTypeEnum("semester_type").notNull(), // "odd" or "even"
+    semester: integer("semester").notNull(), // 1, 3, 5, 7
+
+    // Class details
+    branch: branchEnum("branch").notNull(),
+    section: sectionEnum("section").notNull(),
+
+    // Room allocation
+    room_id: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+
+    // Day half allocation (null for labs - they can use any time)
+    day_half: dayHalfEnum("day_half"), // null for labs, required for classrooms
+
+    // System fields
+    created_by: uuid("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    // For classrooms: Ensure one allocation per room+academic_context+day_half
+    // For labs: Ensure one allocation per room+academic_context (day_half is null)
+    // uniqueIndex("unique_room_allocation").on(
+    //   table.room_id,
+    //   table.academic_year,
+    //   table.semester_type,
+    //   table.day_half, // This handles both cases
+    // ),
+    // Ensure one room per branch+section+semester+day_half (null for labs)
+    uniqueIndex("unique_class_allocation").on(
+      table.academic_year,
+      table.semester_type,
+      table.semester,
+      table.branch,
+      table.section,
+      table.day_half,
+    ),
+  ],
+);
+
+// STEP 2: Timetable Entries - Main entries linking allocations to subjects
 export const timetableEntries = pgTable(
   "timetable_entries",
   {
     id: uuid("id").defaultRandom().primaryKey(),
 
-    // Academic details
-    academic_year: varchar("academic_year", { length: 20 }).notNull(), // "2024-2025"
-    semester_type: semesterTypeEnum("semester_type").notNull(), // "odd" or "even"
-    semester: integer("semester").notNull(), // 1-8
-
-    // References with IDs
-    room_id: uuid("room_id")
+    // Reference to classroom allocation
+    allocation_id: uuid("allocation_id")
       .notNull()
-      .references(() => rooms.id, { onDelete: "cascade" }),
+      .references(() => classroomAllocations.id, { onDelete: "cascade" }),
+
+    // Subject being taught
     subject_id: uuid("subject_id")
       .notNull()
-      .references(() => subjects.id, {
-        onDelete: "set null",
-      }),
-
-    // Class details from enums
-    branch: branchEnum("branch").notNull(),
-    section: sectionEnum("section").notNull(),
+      .references(() => subjects.id, { onDelete: "cascade" }),
 
     // Additional metadata
-    notes: text("notes").notNull(),
+    notes: text("notes"), // e.g., "Lab Session", "Tutorial", "CCN Lab (ECE-VII-A1)", etc.
     color_code: varchar("color_code", { length: 10 }), // For UI color coding
 
     // System fields
-    created_by: uuid("created_by").references(() => users.id), // Editor who created
+    created_by: uuid("created_by").references(() => users.id),
     created_at: timestamp("created_at").defaultNow(),
     updated_at: timestamp("updated_at").defaultNow(),
   },
   (table) => [
-    uniqueIndex("unique_timetable_entry").on(
-      table.academic_year,
-      table.semester_type,
+    // Ensure one subject per allocation (can have multiple timings)
+    uniqueIndex("unique_allocation_subject").on(
+      table.allocation_id,
       table.subject_id,
-      table.branch,
-      table.semester,
-      table.section,
-      table.notes,
     ),
   ],
 );
-// Timetable Entries Timings Table
-export const timetableEntriesTimings = pgTable("timetable_entries_timings", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  timetable_entry_id: uuid("timetable_entry_id")
-    .notNull()
-    .references(() => timetableEntries.id, { onDelete: "cascade" }),
-  day: dayEnum("day").notNull(),
-  time_slot: timeSlotEnum("time_slot").notNull(),
-});
 
-// Teacher Classes Table - Links teachers to their assigned timetable entries
+// STEP 3: Timetable Entry Timings - Multiple day/time slots for each timetable entry
+export const timetableEntryTimings = pgTable(
+  "timetable_entry_timings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    // Reference to timetable entry
+    timetable_entry_id: uuid("timetable_entry_id")
+      .notNull()
+      .references(() => timetableEntries.id, { onDelete: "cascade" }),
+
+    // Time slot details
+    day: dayEnum("day").notNull(),
+    time_slot: timeSlotEnum("time_slot").notNull(),
+
+    // System fields
+    created_by: uuid("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    // Ensure no duplicate timings for same entry
+    uniqueIndex("unique_entry_timing").on(
+      table.timetable_entry_id,
+      table.day,
+      table.time_slot,
+    ),
+  ],
+);
+// Teacher Classes Table - Links teachers to their assigned timetable entries (subjects/labs)
 export const classTeachers = pgTable("class_teachers", {
   id: varchar("id", { length: 9 }).primaryKey(),
   teacher_id: uuid("teacher_id")
@@ -332,10 +392,10 @@ export const classTeachers = pgTable("class_teachers", {
     .references(() => timetableEntries.id, { onDelete: "cascade" }),
   assigned_at: timestamp("assigned_at").defaultNow(),
   is_active: boolean("is_active").default(true),
-  notes: text("notes"), // Teacher-specific notes for this class
+  notes: text("notes"), // Teacher-specific notes for this subject/lab
 });
 
-// Class Students Table - Maps students to teacher classes
+// Class Students Table - Maps students to teacher classes (works for both classes and labs)
 export const classStudents = pgTable("class_students", {
   id: uuid("id").defaultRandom().primaryKey(),
   teacher_class_id: varchar("teacher_class_id", { length: 9 })
@@ -346,5 +406,5 @@ export const classStudents = pgTable("class_students", {
     .references(() => students.id, { onDelete: "cascade" }),
   enrolled_at: timestamp("enrolled_at").defaultNow(),
   is_active: boolean("is_active").default(true),
-  notes: text("notes"), // Additional notes about this student's enrollment
+  notes: text("notes"), // Additional notes like "Batch A1", "Group 1", etc.
 });

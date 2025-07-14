@@ -17,6 +17,7 @@
     "@auth/core": "^0.39.1",
     "@auth/drizzle-adapter": "^1.9.1",
     "@neondatabase/serverless": "^1.0.0",
+    "@radix-ui/react-tabs": "^1.1.12",
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",

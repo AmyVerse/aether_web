@@ -1,9 +1,17 @@
+import { useDataCache } from "@/hooks/useDataCache";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { PanelRightClose } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { FaBell, FaCog, FaEnvelope, FaSearch, FaUser } from "react-icons/fa";
+import {
+  FaBell,
+  FaCog,
+  FaEnvelope,
+  FaSearch,
+  FaSync,
+  FaUser,
+} from "react-icons/fa";
 import Dialog from "../ui/dialog";
 
 interface HeaderProps {
@@ -12,6 +20,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { userName, userEmail, userImage, userRole } = useCachedSession();
+  const { invalidateCache } = useDataCache();
   const user = {
     name: userName,
     email: userEmail,
@@ -65,8 +74,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
   ];
 
   const handleSignOut = async () => {
+    // Clear all cache on sign out
+    invalidateCache();
     await signOut({ callbackUrl: "/" });
     setShowSignOutModal(false);
+  };
+
+  const handleRefreshCache = () => {
+    invalidateCache();
+    window.location.reload();
   };
 
   // Helper function to get user initials
@@ -137,8 +153,19 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </div>
         </div>
 
-        {/* Right side - Messages, Notifications and Avatar */}
+        {/* Right side - Cache Refresh, Messages, Notifications and Avatar */}
         <div className="flex items-center sm:gap-3">
+          {/* Cache Refresh button */}
+          <div className="relative">
+            <button
+              onClick={handleRefreshCache}
+              className="p-2.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+              title="Refresh all cached data"
+            >
+              <FaSync className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+
           {/* Messages icon */}
           <div className="relative">
             <button

@@ -241,6 +241,7 @@ export function useTeacherClassesCache() {
 
 export function useClassDetailsCache() {
   const { cachedFetch, invalidateCache } = useCachedFetch();
+  const { triggerRefresh, lastRefreshTriggers } = useDataCache();
 
   const fetchClassDetails = async (classId: string, forceRefresh = false) => {
     const url = `/api/teacher/classes/${classId}`;
@@ -273,8 +274,11 @@ export function useClassDetailsCache() {
   };
 
   const invalidateClassData = (classId: string) => {
-    invalidateCache(`class-${classId}`);
+    invalidateCache(`class-details-${classId}`);
+    invalidateCache(`class-students-${classId}`);
     invalidateCache(`available-students-${classId}`);
+    // Trigger refresh so components know to re-fetch
+    triggerRefresh("students");
   };
 
   return {
@@ -282,6 +286,7 @@ export function useClassDetailsCache() {
     fetchClassStudents,
     fetchAvailableStudents,
     invalidateClassData,
+    lastRefresh: lastRefreshTriggers.students,
   };
 }
 
