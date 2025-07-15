@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
-import { rooms, subjects, timetableEntries } from "@/db/schema";
+import {
+  classroomAllocations,
+  rooms,
+  subjects,
+  timetableEntries,
+} from "@/db/schema";
 import { db } from "@/index";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -126,35 +131,40 @@ export async function GET(req: NextRequest) {
         }
 
         let whereConditions = and(
-          eq(timetableEntries.academic_year, academicYear),
-          eq(timetableEntries.semester_type, semesterType),
+          eq(classroomAllocations.academic_year, academicYear),
+          eq(classroomAllocations.semester_type, semesterType),
         );
 
         if (roomId) {
           whereConditions = and(
             whereConditions,
-            eq(timetableEntries.room_id, roomId),
+            eq(classroomAllocations.room_id, roomId),
           );
         }
 
         const timetableData = await db
           .select({
             id: timetableEntries.id,
-            room_id: timetableEntries.room_id,
+            room_id: classroomAllocations.room_id,
             room_number: rooms.room_number,
             room_type: rooms.room_type,
             subject_id: timetableEntries.subject_id,
             course_code: subjects.course_code,
             course_name: subjects.course_name,
-            branch: timetableEntries.branch,
-            section: timetableEntries.section,
+            branch: classroomAllocations.branch,
+            section: classroomAllocations.section,
+            semester: classroomAllocations.semester,
             color_code: timetableEntries.color_code,
             notes: timetableEntries.notes,
-            academic_year: timetableEntries.academic_year,
-            semester_type: timetableEntries.semester_type,
+            academic_year: classroomAllocations.academic_year,
+            semester_type: classroomAllocations.semester_type,
           })
           .from(timetableEntries)
-          .leftJoin(rooms, eq(timetableEntries.room_id, rooms.id))
+          .innerJoin(
+            classroomAllocations,
+            eq(timetableEntries.allocation_id, classroomAllocations.id),
+          )
+          .leftJoin(rooms, eq(classroomAllocations.room_id, rooms.id))
           .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
           .where(whereConditions);
 
@@ -175,35 +185,40 @@ export async function GET(req: NextRequest) {
         }
 
         let exportWhereConditions = and(
-          eq(timetableEntries.academic_year, exportAcademicYear),
-          eq(timetableEntries.semester_type, exportSemesterType),
+          eq(classroomAllocations.academic_year, exportAcademicYear),
+          eq(classroomAllocations.semester_type, exportSemesterType),
         );
 
         if (exportRoomId) {
           exportWhereConditions = and(
             exportWhereConditions,
-            eq(timetableEntries.room_id, exportRoomId),
+            eq(classroomAllocations.room_id, exportRoomId),
           );
         }
 
         const exportTimetableData = await db
           .select({
             id: timetableEntries.id,
-            room_id: timetableEntries.room_id,
+            room_id: classroomAllocations.room_id,
             room_number: rooms.room_number,
             room_type: rooms.room_type,
             subject_id: timetableEntries.subject_id,
             course_code: subjects.course_code,
             course_name: subjects.course_name,
-            branch: timetableEntries.branch,
-            section: timetableEntries.section,
+            branch: classroomAllocations.branch,
+            section: classroomAllocations.section,
+            semester: classroomAllocations.semester,
             color_code: timetableEntries.color_code,
             notes: timetableEntries.notes,
-            academic_year: timetableEntries.academic_year,
-            semester_type: timetableEntries.semester_type,
+            academic_year: classroomAllocations.academic_year,
+            semester_type: classroomAllocations.semester_type,
           })
           .from(timetableEntries)
-          .leftJoin(rooms, eq(timetableEntries.room_id, rooms.id))
+          .innerJoin(
+            classroomAllocations,
+            eq(timetableEntries.allocation_id, classroomAllocations.id),
+          )
+          .leftJoin(rooms, eq(classroomAllocations.room_id, rooms.id))
           .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
           .where(exportWhereConditions);
 
@@ -281,15 +296,62 @@ export async function POST(req: NextRequest) {
               "ECE-IoT",
             ]),
             section: z.enum(["A", "B", "C"]),
+            day_half: z.enum(["first_half", "second_half"]),
             color_code: z.string().optional(),
             notes: z.string(),
           })
           .parse(body.data);
 
+        // First, find or create the classroom allocation
+        let allocation = await db
+          .select()
+          .from(classroomAllocations)
+          .where(
+            and(
+              eq(
+                classroomAllocations.academic_year,
+                newEntryData.academic_year,
+              ),
+              eq(
+                classroomAllocations.semester_type,
+                newEntryData.semester_type,
+              ),
+              eq(classroomAllocations.semester, newEntryData.semester),
+              eq(classroomAllocations.branch, newEntryData.branch),
+              eq(classroomAllocations.section, newEntryData.section),
+              eq(classroomAllocations.room_id, newEntryData.room_id),
+              eq(classroomAllocations.day_half, newEntryData.day_half),
+            ),
+          )
+          .limit(1);
+
+        if (allocation.length === 0) {
+          // Create new classroom allocation
+          const newAllocation = await db
+            .insert(classroomAllocations)
+            .values({
+              academic_year: newEntryData.academic_year,
+              semester_type: newEntryData.semester_type,
+              semester: newEntryData.semester,
+              branch: newEntryData.branch,
+              section: newEntryData.section,
+              room_id: newEntryData.room_id,
+              day_half: newEntryData.day_half,
+              created_by: session.user.id,
+            })
+            .returning();
+
+          allocation = newAllocation;
+        }
+
+        // Now create the timetable entry
         const createdEntry = await db
           .insert(timetableEntries)
           .values({
-            ...newEntryData,
+            allocation_id: allocation[0].id,
+            subject_id: newEntryData.subject_id,
+            color_code: newEntryData.color_code,
+            notes: newEntryData.notes,
             created_by: session.user.id,
           })
           .returning();

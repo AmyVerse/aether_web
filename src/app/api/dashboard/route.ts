@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { classTeachers, subjects, timetableEntries, users } from "@/db/schema";
+import { classTeachers, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -40,22 +40,29 @@ export async function GET(request: NextRequest) {
 
     // Add role-specific dashboard data
     if (userRole === "teacher") {
-      // Get teacher's classes count
-      const teacherClasses = await db
+      // Get teacher's assignments using unified approach
+      const teacherAssignments = await db
         .select({
           id: classTeachers.id,
-          subject_name: subjects.course_name,
+          allocation_type: classTeachers.allocation_type,
+          timetable_entry_id: classTeachers.timetable_entry_id,
+          lab_entry_id: classTeachers.lab_entry_id,
         })
         .from(classTeachers)
-        .leftJoin(
-          timetableEntries,
-          eq(classTeachers.timetable_entry_id, timetableEntries.id),
-        )
-        .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
         .where(eq(classTeachers.teacher_id, userId));
 
+      // Count by type for stats
+      const regularClasses = teacherAssignments.filter(
+        (a) => a.allocation_type === "class",
+      ).length;
+      const labClasses = teacherAssignments.filter(
+        (a) => a.allocation_type === "lab",
+      ).length;
+
       dashboardData.stats = {
-        totalClasses: teacherClasses.length,
+        totalClasses: teacherAssignments.length,
+        regularClasses: regularClasses,
+        labClasses: labClasses,
         // Add more teacher stats as needed
       };
     }

@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import {
+  classroomAllocations,
   classSessions,
   classTeachers,
+  labTimetableEntries,
   subjects,
   timetableEntries,
 } from "@/db/schema";
@@ -26,30 +28,95 @@ export async function GET(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Get class data
-    const classData = await db
+    // Get teacher assignment to determine allocation type
+    const teacherAssignment = await db
       .select({
         id: classTeachers.id,
-        subject_name: subjects.course_name,
-        subject_code: subjects.course_code,
-        short_name: subjects.short_name,
+        allocation_type: classTeachers.allocation_type,
+        timetable_entry_id: classTeachers.timetable_entry_id,
+        lab_entry_id: classTeachers.lab_entry_id,
       })
       .from(classTeachers)
-      .leftJoin(
-        timetableEntries,
-        eq(classTeachers.timetable_entry_id, timetableEntries.id),
-      )
-      .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
       .where(eq(classTeachers.id, classId))
       .limit(1);
 
-    if (classData.length === 0) {
+    if (teacherAssignment.length === 0) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    const assignment = teacherAssignment[0];
+
+    // Get class/lab details based on allocation type
+    let classData;
+
+    if (
+      assignment.allocation_type === "class" &&
+      assignment.timetable_entry_id
+    ) {
+      // Get regular class details
+      const details = await db
+        .select({
+          id: classTeachers.id,
+          allocation_type: classTeachers.allocation_type,
+          subject_name: subjects.course_name,
+          subject_code: subjects.course_code,
+          short_name: subjects.short_name,
+          branch: classroomAllocations.branch,
+          section: classroomAllocations.section,
+          semester: classroomAllocations.semester,
+        })
+        .from(classTeachers)
+        .innerJoin(
+          timetableEntries,
+          eq(classTeachers.timetable_entry_id, timetableEntries.id),
+        )
+        .innerJoin(
+          classroomAllocations,
+          eq(timetableEntries.allocation_id, classroomAllocations.id),
+        )
+        .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
+        .where(eq(classTeachers.id, classId))
+        .limit(1);
+
+      classData = details[0] || null;
+    } else if (
+      assignment.allocation_type === "lab" &&
+      assignment.lab_entry_id
+    ) {
+      // Get lab details
+      const details = await db
+        .select({
+          id: classTeachers.id,
+          allocation_type: classTeachers.allocation_type,
+          subject_name: subjects.course_name,
+          subject_code: subjects.course_code,
+          short_name: subjects.short_name,
+          branch: labTimetableEntries.branch,
+          section: labTimetableEntries.section,
+          semester: labTimetableEntries.semester,
+        })
+        .from(classTeachers)
+        .innerJoin(
+          labTimetableEntries,
+          eq(classTeachers.lab_entry_id, labTimetableEntries.id),
+        )
+        .leftJoin(subjects, eq(labTimetableEntries.subject_id, subjects.id))
+        .where(eq(classTeachers.id, classId))
+        .limit(1);
+
+      classData = details[0] || null;
+    }
+
+    if (!classData) {
+      return NextResponse.json(
+        { error: "Class details not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
       session: sessionData[0],
-      class: classData[0],
+      class: classData,
     });
   } catch (error) {
     console.error("Error fetching session data:", error);

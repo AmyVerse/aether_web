@@ -2,17 +2,38 @@
 
 import ClassroomAllocationTable from "@/components/editor/classroom-allocation-table";
 import TimetableGrid from "@/components/editor/timetable-grid";
+import TimetableGridLab from "@/components/editor/timetable-grid-lab";
 import { useSessionStore } from "@/store/useSessionStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function EditorDashboard() {
   const academicYear = useSessionStore((s) => s.academicYear);
   const setAcademicYear = useSessionStore((s) => s.setAcademicYear);
   const semesterType = useSessionStore((s) => s.semesterType);
   const setSemesterType = useSessionStore((s) => s.setSemesterType);
-  const [activeTab, setActiveTab] = useState<"allocations" | "timetable">(
-    "allocations",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "allocations" | "timetable-class" | "timetable-lab"
+  >("allocations");
+
+  // Handle URL fragment navigation
+  useEffect(() => {
+    const hash = window.location.hash.slice(1); // Remove the #
+    if (
+      hash === "allocations" ||
+      hash === "timetable-class" ||
+      hash === "timetable-lab"
+    ) {
+      setActiveTab(hash as "allocations" | "timetable-class" | "timetable-lab");
+    }
+  }, []);
+
+  // Update URL fragment when tab changes
+  const handleTabChange = (
+    tab: "allocations" | "timetable-class" | "timetable-lab",
+  ) => {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+  };
 
   return (
     <>
@@ -78,7 +99,7 @@ export default function EditorDashboard() {
         <div className="px-3 sm:px-4 md:px-6 lg:px-8 pt-6">
           <div className="flex space-x-1 border-b border-gray-200 mb-6">
             <button
-              onClick={() => setActiveTab("allocations")}
+              onClick={() => handleTabChange("allocations")}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                 activeTab === "allocations"
                   ? "bg-blue-100 text-blue-700 border-b-2 border-blue-500"
@@ -88,21 +109,32 @@ export default function EditorDashboard() {
               Classroom Allocations
             </button>
             <button
-              onClick={() => setActiveTab("timetable")}
+              onClick={() => handleTabChange("timetable-class")}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeTab === "timetable"
+                activeTab === "timetable-class"
                   ? "bg-blue-100 text-blue-700 border-b-2 border-blue-500"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Timetable Grid
+              Timetable Grid (Class)
+            </button>
+            <button
+              onClick={() => handleTabChange("timetable-lab")}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === "timetable-lab"
+                  ? "bg-blue-100 text-blue-700 border-b-2 border-blue-500"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Timetable Grid (Lab)
             </button>
           </div>
         </div>
 
         <div className="px-3 sm:px-4 md:px-6 lg:px-8 pb-6">
           {activeTab === "allocations" && <ClassroomAllocationTable />}
-          {activeTab === "timetable" && <TimetableGrid />}
+          {activeTab === "timetable-class" && <TimetableGrid />}
+          {activeTab === "timetable-lab" && <TimetableGridLab />}
         </div>
       </section>
     </>

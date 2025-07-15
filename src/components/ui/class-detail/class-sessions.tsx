@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import Dialog from "@/components/ui/dialog";
+import { useInvalidateRelatedCache } from "@/hooks/useDataCache";
 import { useToast } from "@/hooks/useToast";
 import { useState } from "react";
 import { FaCalendarAlt, FaEdit, FaPlus } from "react-icons/fa";
@@ -28,6 +29,7 @@ export default function ClassSessions({
   onSessionsChangeAction,
 }: ClassSessionsProps) {
   const { showSuccess, showError } = useToast();
+  const { invalidateAfterSessionOperation } = useInvalidateRelatedCache();
   const [editingSession, setEditingSession] = useState<ClassSession | null>(
     null,
   );
@@ -63,6 +65,9 @@ export default function ClassSessions({
       if (response.ok) {
         const data = await response.json();
         showSuccess("Session created successfully!");
+        // Invalidate cache for sessions
+        invalidateAfterSessionOperation(classId);
+        onSessionsChangeAction();
         // Redirect to attendance page
         window.location.href = `/dashboard/class/${classId}/session/${data.data.id}`;
       } else {
@@ -111,6 +116,8 @@ export default function ClassSessions({
       if (res.ok) {
         showSuccess("Session updated!");
         setEditingSession(null);
+        // Invalidate cache for sessions
+        invalidateAfterSessionOperation(classId);
         onSessionsChangeAction();
       } else {
         const err = await res.json();
@@ -134,6 +141,8 @@ export default function ClassSessions({
         showSuccess("Session deleted!");
         setEditingSession(null);
         setShowDeleteConfirm(false);
+        // Invalidate cache for sessions
+        invalidateAfterSessionOperation(classId);
         onSessionsChangeAction();
       } else {
         const err = await res.json();

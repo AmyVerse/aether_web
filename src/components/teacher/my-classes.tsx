@@ -22,18 +22,46 @@ import AddClassModal from "./add-class-modal";
 
 interface TeacherClass {
   id: string;
-  timetable_entry_id: string;
+  allocation_type: string;
+  assigned_at: string;
+  is_active: boolean;
+  notes?: string;
+  entry_details: {
+    subject_name: string;
+    subject_code: string;
+    subject_short_name?: string;
+    branch: string;
+    section: string;
+    room_number: string;
+    academic_year: string;
+    semester_type: string;
+    semester?: number;
+    room_type?: string;
+    // For regular classes
+    entry_id?: string;
+    allocation_id?: string;
+    day_half?: string;
+    entry_notes?: string;
+    entry_color?: string;
+    // For lab entries
+    lab_id?: string;
+    day?: string;
+    start_time?: string;
+    end_time?: string;
+    duration_hours?: number;
+    lab_notes?: string;
+    lab_color?: string;
+  };
+  timings: { id?: string; day: string; time_slot: string }[];
+}
+
+interface ProcessedClass extends TeacherClass {
   subject_name: string;
   subject_code: string;
   branch: string;
   section: string;
   room_number: string;
-  timings: { day: string; time_slot: string }[];
-}
-
-interface ProcessedClass extends TeacherClass {
   subject_display: string;
-  notes?: string;
   dayTimePairs: { day: string; time_slot: string }[];
   class_location: string;
   class_group: string | null;
@@ -95,15 +123,42 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
         // Club timings for each class
         const processedClasses = result.data.map(
           (classItem: TeacherClass): ProcessedClass => {
+            const entryDetails = classItem.entry_details;
+
+            // For labs, create timing from embedded day/time info
+            let timings = classItem.timings;
+            if (
+              classItem.allocation_type === "lab" &&
+              entryDetails.day &&
+              entryDetails.start_time &&
+              entryDetails.end_time
+            ) {
+              timings = [
+                {
+                  day: entryDetails.day,
+                  time_slot: `${entryDetails.start_time}-${entryDetails.end_time}`,
+                },
+              ];
+            }
+
             return {
               ...classItem,
-              subject_display: classItem.subject_name,
-              notes: (classItem as any).notes,
-              dayTimePairs: classItem.timings,
-              class_location: classItem.room_number,
+              subject_name: entryDetails.subject_name,
+              subject_code: entryDetails.subject_code,
+              branch: entryDetails.branch,
+              section: entryDetails.section,
+              room_number: entryDetails.room_number,
+              timings: timings,
+              subject_display: entryDetails.subject_name,
+              notes:
+                entryDetails.entry_notes ||
+                entryDetails.lab_notes ||
+                classItem.notes,
+              dayTimePairs: timings,
+              class_location: entryDetails.room_number,
               class_group:
-                classItem.branch && classItem.section
-                  ? `${classItem.branch} : ${classItem.section}`
+                entryDetails.branch && entryDetails.section
+                  ? `${entryDetails.branch} : ${entryDetails.section}`
                   : null,
             };
           },
@@ -229,8 +284,30 @@ export default function MyClasses({ fullView = false }: MyClassesProps) {
                             <h4 className="font-semibold text-gray-900 text-lg">
                               {classItem.subject_display}
                             </h4>
-                            <div className="bg-green-50 text-green-700 px-2 py-1 rounded-md text-xs font-medium">
-                              {classItem.notes || "-"}
+                            <div
+                              className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                classItem.allocation_type === "lab"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {classItem.allocation_type.toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="mb-2 space-y-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-medium text-gray-700">
+                                Semester:
+                              </span>
+                              <span className="text-gray-600">
+                                {classItem.entry_details.semester || "N/A"}
+                              </span> |
+                              <span className="font-medium text-gray-700">
+                                Class:
+                              </span>
+                              <span className="text-gray-600">
+                                {classItem.branch}-{classItem.section}
+                              </span>
                             </div>
                           </div>
                           {/* Day/Time pairs */}

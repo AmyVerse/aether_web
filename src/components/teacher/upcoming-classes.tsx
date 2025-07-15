@@ -16,16 +16,37 @@ import {
 
 interface TeacherClass {
   id: string;
-  timetable_entry_id?: string;
-  subject_name: string;
-  subject_code: string;
-  branch: string | null;
-  section: string | null;
-  room_number: string;
-  academic_year: string;
-  semester_type: string;
+  allocation_type: string;
+  assigned_at: string;
+  is_active: boolean;
   notes?: string;
-  timings?: { day: string; time_slot: string }[];
+  entry_details: {
+    subject_name: string;
+    subject_code: string;
+    subject_short_name?: string;
+    branch: string;
+    section: string;
+    room_number: string;
+    academic_year: string;
+    semester_type: string;
+    semester?: number;
+    room_type?: string;
+    // For regular classes
+    entry_id?: string;
+    allocation_id?: string;
+    day_half?: string;
+    entry_notes?: string;
+    entry_color?: string;
+    // For lab entries
+    lab_id?: string;
+    day?: string;
+    start_time?: string;
+    end_time?: string;
+    duration_hours?: number;
+    lab_notes?: string;
+    lab_color?: string;
+  };
+  timings: { id?: string; day: string; time_slot: string }[];
 }
 
 interface TodayClass {
@@ -33,6 +54,11 @@ interface TodayClass {
   subject_display: string;
   class_location: string;
   class_group: string | null;
+  allocation_type: string;
+  semester?: number;
+  branch: string;
+  section: string;
+  lab_notes?: string;
   notes?: string;
   time_slot: string;
   time_sort: number;
@@ -92,32 +118,57 @@ export default function TeacherUpcomingClasses() {
           // For each class, if it has timings for today, show a card for each timing
           const todayClasses: TodayClass[] = [];
           for (const classItem of result.data) {
-            if (Array.isArray(classItem.timings)) {
-              classItem.timings.forEach(
-                (timing: { day: string; time_slot: string }) => {
-                  if (timing.day === currentDay) {
-                    const [startTime] = timing.time_slot.split("-");
-                    const [hour, minute] = startTime.split(":").map(Number);
-                    const period = hour >= 12 ? "PM" : "AM";
-                    const displayHour =
-                      hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                    const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-                    const classTimeInMinutes = hour * 60 + minute;
-                    todayClasses.push({
-                      id: classItem.id,
-                      subject_display: classItem.subject_name,
-                      class_location: classItem.room_number,
-                      class_group:
-                        classItem.branch && classItem.section
-                          ? `${classItem.branch} : ${classItem.section}`
-                          : null,
-                      notes: classItem.notes,
-                      time_slot: `${timing.day}: ${formattedTime}`,
-                      time_sort: classTimeInMinutes,
-                    });
-                  }
+            const entryDetails = classItem.entry_details;
+
+            // For labs, create timing from embedded day/time info if not already in timings
+            let timings = classItem.timings;
+            if (
+              classItem.allocation_type === "lab" &&
+              entryDetails.day &&
+              entryDetails.start_time &&
+              entryDetails.end_time &&
+              (!timings || timings.length === 0)
+            ) {
+              timings = [
+                {
+                  day: entryDetails.day,
+                  time_slot: `${entryDetails.start_time}-${entryDetails.end_time}`,
                 },
-              );
+              ];
+            }
+
+            if (Array.isArray(timings)) {
+              timings.forEach((timing: { day: string; time_slot: string }) => {
+                if (timing.day === currentDay) {
+                  const [startTime] = timing.time_slot.split("-");
+                  const [hour, minute] = startTime.split(":").map(Number);
+                  const period = hour >= 12 ? "PM" : "AM";
+                  const displayHour =
+                    hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                  const formattedTime = `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+                  const classTimeInMinutes = hour * 60 + minute;
+                  todayClasses.push({
+                    id: classItem.id,
+                    subject_display: entryDetails.subject_name,
+                    class_location: entryDetails.room_number,
+                    class_group:
+                      entryDetails.branch && entryDetails.section
+                        ? `${entryDetails.branch} : ${entryDetails.section}`
+                        : null,
+                    allocation_type: classItem.allocation_type,
+                    semester: entryDetails.semester,
+                    branch: entryDetails.branch,
+                    section: entryDetails.section,
+                    lab_notes: entryDetails.lab_notes,
+                    notes:
+                      entryDetails.entry_notes ||
+                      entryDetails.lab_notes ||
+                      classItem.notes,
+                    time_slot: `${timing.day}: ${formattedTime}`,
+                    time_sort: classTimeInMinutes,
+                  });
+                }
+              });
             }
           }
           todayClasses.sort((a, b) => a.time_sort - b.time_sort);
@@ -233,19 +284,37 @@ export default function TeacherUpcomingClasses() {
                 >
                   <div className="flex-1">
                     <div className="mb-3">
-                      <h4 className="font-semibold text-gray-900 text-lg mb-1">
-                        {classItem.subject_display}
-                      </h4>
-                      {classItem.class_group && (
-                        <p className="text-sm text-gray-600 font-medium mb-2">
-                          {classItem.class_group}
-                        </p>
-                      )}
-                      {classItem.notes && (
-                        <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium mb-2">
-                          {classItem.notes}
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-900 text-lg">
+                          {classItem.subject_display}
+                        </h4>
+                        <div
+                          className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            classItem.allocation_type === "lab"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {classItem.allocation_type.toUpperCase()}
                         </div>
-                      )}
+                      </div>
+                      <div className="mb-2 space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium text-gray-700">
+                            Semester:
+                          </span>
+                          <span className="text-gray-600">
+                            {classItem.semester || "N/A"}
+                          </span>
+                          |
+                          <span className="font-medium text-gray-700">
+                            Class:
+                          </span>
+                          <span className="text-gray-600">
+                            {classItem.branch}-{classItem.section}
+                          </span>
+                        </div>
+                      </div>
                       <div className="space-y-1 text-sm text-gray-500">
                         <div className="flex items-center gap-1.5">
                           <FaClock className="w-3.5 h-3.5" />

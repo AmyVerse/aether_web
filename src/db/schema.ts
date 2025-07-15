@@ -381,15 +381,72 @@ export const timetableEntryTimings = pgTable(
     ),
   ],
 );
+
+// Lab Timetable Entries - Separate table for lab sessions with duration support
+export const labTimetableEntries = pgTable(
+  "lab_timetable_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    // Room reference
+    room_id: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+
+    // Subject being taught
+    subject_id: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+
+    // Academic details
+    academic_year: varchar("academic_year", { length: 10 }).notNull(), // e.g., "2024-2025"
+    semester_type: varchar("semester_type", { length: 10 }).notNull(), // "odd" or "even"
+    semester: integer("semester").notNull(), // 1-8
+    branch: varchar("branch", { length: 10 }).notNull(), // e.g., "CSE", "ECE"
+    section: varchar("section", { length: 5 }).notNull(), // e.g., "A", "B"
+
+    // Timing details
+    day: varchar("day", { length: 10 }).notNull(), // "Monday", "Tuesday", etc.
+    start_time: varchar("start_time", { length: 10 }).notNull(), // "8:00", "9:00", etc.
+    end_time: varchar("end_time", { length: 10 }).notNull(), // "10:00", "12:00", etc.
+    duration_hours: integer("duration_hours").notNull(), // 1, 2, 3, etc.
+
+    // Additional metadata
+    notes: text("notes"), // e.g., "Batch A1", "Advanced Lab"
+    color_code: varchar("color_code", { length: 10 }), // For UI color coding
+
+    // System fields
+    created_by: uuid("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    // Ensure no conflicts for same room, day, and overlapping time
+    uniqueIndex("unique_lab_room_day_time").on(
+      table.room_id,
+      table.day,
+      table.start_time,
+    ),
+  ],
+);
+
 // Teacher Classes Table - Links teachers to their assigned timetable entries (subjects/labs)
 export const classTeachers = pgTable("class_teachers", {
   id: varchar("id", { length: 9 }).primaryKey(),
   teacher_id: uuid("teacher_id")
     .notNull()
     .references(() => teachers.id, { onDelete: "cascade" }),
-  timetable_entry_id: uuid("timetable_entry_id")
-    .notNull()
-    .references(() => timetableEntries.id, { onDelete: "cascade" }),
+
+  // Entry type and IDs - only one should be set based on allocation_type
+  allocation_type: varchar("allocation_type", { length: 10 }).notNull(), // "class" or "lab"
+  timetable_entry_id: uuid("timetable_entry_id").references(
+    () => timetableEntries.id,
+    { onDelete: "cascade" },
+  ), // For regular classes
+  lab_entry_id: uuid("lab_entry_id").references(() => labTimetableEntries.id, {
+    onDelete: "cascade",
+  }), // For lab assignments
+
   assigned_at: timestamp("assigned_at").defaultNow(),
   is_active: boolean("is_active").default(true),
   notes: text("notes"), // Teacher-specific notes for this subject/lab

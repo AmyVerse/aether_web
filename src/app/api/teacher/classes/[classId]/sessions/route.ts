@@ -1,11 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
-import {
-  classSessions,
-  classTeachers,
-  teachers,
-  timetableEntries,
-} from "@/db/schema";
+import { classSessions, classTeachers, teachers } from "@/db/schema";
 import { authenticateTeacher } from "@/utils/auth-helpers";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -36,18 +31,25 @@ export async function POST(
 
     // Verify the class belongs to the current teacher
     const teacherClass = await db
-      .select()
+      .select({
+        id: classTeachers.id,
+        teacher_id: classTeachers.teacher_id,
+        allocation_type: classTeachers.allocation_type,
+        is_active: classTeachers.is_active,
+      })
       .from(classTeachers)
-      .where(eq(classTeachers.id, resolvedParams.classId))
-      .limit(1);
+      .where(
+        and(
+          eq(classTeachers.id, resolvedParams.classId),
+          eq(classTeachers.teacher_id, teacher[0].id),
+          eq(classTeachers.is_active, true),
+        ),
+      );
 
-    if (
-      teacherClass.length === 0 ||
-      teacherClass[0].teacher_id !== teacher[0].id
-    ) {
+    if (teacherClass.length === 0) {
       return NextResponse.json(
         { error: "Class not found or unauthorized" },
-        { status: 403 },
+        { status: 404 },
       );
     }
 
@@ -101,38 +103,28 @@ export async function GET(
 
     const resolvedParams = await params;
 
-    // Get session context from query params
-    const { searchParams } = new URL(request.url);
-    const academicYear = searchParams.get("academicYear");
-    const semesterType = searchParams.get("semesterType");
-
-    // Build where clauses for session context
-    const whereClauses = [eq(classTeachers.id, resolvedParams.classId)];
-    if (academicYear) {
-      whereClauses.push(eq(timetableEntries.academic_year, academicYear));
-    }
-    if (semesterType && (semesterType === "odd" || semesterType === "even")) {
-      whereClauses.push(
-        eq(timetableEntries.semester_type, semesterType as "odd" | "even"),
-      );
-    }
-
-    // Join classTeachers and timetableEntries to filter by session context
+    // Verify the class belongs to the current teacher
     const teacherClass = await db
       .select({
         id: classTeachers.id,
+        teacher_id: classTeachers.teacher_id,
+        allocation_type: classTeachers.allocation_type,
         timetable_entry_id: classTeachers.timetable_entry_id,
+        lab_entry_id: classTeachers.lab_entry_id,
+        is_active: classTeachers.is_active,
       })
       .from(classTeachers)
-      .innerJoin(
-        timetableEntries,
-        eq(classTeachers.timetable_entry_id, timetableEntries.id),
-      )
-      .where(and(...whereClauses));
+      .where(
+        and(
+          eq(classTeachers.id, resolvedParams.classId),
+          eq(classTeachers.teacher_id, teacher.id),
+          eq(classTeachers.is_active, true),
+        ),
+      );
 
-    if (!teacherClass.length) {
+    if (teacherClass.length === 0) {
       return NextResponse.json(
-        { error: "Class not found in this session context" },
+        { error: "Class not found or unauthorized" },
         { status: 404 },
       );
     }

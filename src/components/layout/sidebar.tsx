@@ -1,11 +1,11 @@
 "use client";
 import { useCachedSession } from "@/hooks/useSessionCache";
 import { cn } from "@/lib/utils";
+import { useUIStore } from "@/store/useUIStore";
 import { PanelLeftClose, PanelRightClose } from "lucide-react";
-import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   FaCog,
   FaHome,
@@ -14,7 +14,6 @@ import {
   FaRegEnvelope,
   FaRegQuestionCircle,
   FaRegUser,
-  FaSignOutAlt,
 } from "react-icons/fa";
 
 interface SidebarItem {
@@ -40,23 +39,8 @@ export default function Sidebar({
   // Use passed userRole or fallback to cached session role
   const currentUserRole = userRole || cachedUserRole;
 
-  // Desktop collapse state
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  // Load collapse state from localStorage on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem("sidebar-collapsed");
-    if (savedState !== null) {
-      setIsCollapsed(JSON.parse(savedState));
-    }
-  }, []);
-
-  // Save collapse state to localStorage
-  const toggleCollapsed = () => {
-    const newState = !isCollapsed;
-    setIsCollapsed(newState);
-    localStorage.setItem("sidebar-collapsed", JSON.stringify(newState));
-  };
+  // Use Zustand store for sidebar collapse state - this prevents FOUC
+  const { sidebarCollapsed, toggleSidebar } = useUIStore();
 
   const sidebarItems: SidebarItem[] = [
     {
@@ -116,7 +100,7 @@ export default function Sidebar({
           // Mobile behavior
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           // Desktop width based on collapsed state
-          isCollapsed ? "md:w-20" : "md:w-72",
+          sidebarCollapsed ? "md:w-20" : "md:w-72",
           // Mobile always full width when open
           "w-72",
         )}
@@ -141,7 +125,7 @@ export default function Sidebar({
           {/* Desktop: Branding and collapse toggle inline */}
           <div className="hidden md:flex self-center items-center justify-center min-h-[60px]">
             <div className="flex-1 text-left">
-              {!isCollapsed && (
+              {!sidebarCollapsed && (
                 <div>
                   <h1 className="text-2xl font-[manrope] md:text-3xl font-bold bg-gray-800 bg-clip-text text-transparent tracking-tight">
                     Aether
@@ -154,12 +138,12 @@ export default function Sidebar({
             </div>
 
             <button
-              onClick={toggleCollapsed}
+              onClick={toggleSidebar}
               className={cn(
                 "bg-white border border-gray-300 rounded-md p-2 transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 flex items-center justify-center",
               )}
             >
-              {isCollapsed ? (
+              {sidebarCollapsed ? (
                 <PanelRightClose className="w-5 h-5 text-gray-700" />
               ) : (
                 <PanelLeftClose className="w-5 h-5 text-gray-700" />
@@ -188,14 +172,17 @@ export default function Sidebar({
           )}
         >
           {filteredItems.map((item) => {
-            // Check if current pathname matches the item href exactly
-            const isActive = pathname === item.href;
+            // Check if current pathname matches the item href exactly, or for Classes, if URL contains "/class"
+            const isActive =
+              item.href === "/dashboard/class"
+                ? pathname.includes("/class")
+                : pathname === item.href;
             return (
               <Link key={item.label} href={item.href} onClick={onClose}>
                 <button
                   className={cn(
                     "flex items-center w-full rounded-xl text-sm font-medium transition-all duration-200 group relative",
-                    isCollapsed
+                    sidebarCollapsed
                       ? "md:justify-center md:px-2 md:py-3"
                       : "gap-4 px-4 py-3.5",
                     "gap-4 px-4 py-3.5", // Mobile always shows full
@@ -203,7 +190,7 @@ export default function Sidebar({
                       ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-200/60 shadow-sm"
                       : "text-gray-600 hover:bg-gray-50/80 hover:text-gray-900 border border-transparent hover:border-gray-200/40",
                   )}
-                  title={isCollapsed ? item.label : undefined}
+                  title={sidebarCollapsed ? item.label : undefined}
                 >
                   <span
                     className={cn(
@@ -220,14 +207,14 @@ export default function Sidebar({
                   <span
                     className={cn(
                       "font-medium tracking-wide transition-all duration-300",
-                      isCollapsed ? "md:hidden" : "block",
+                      sidebarCollapsed ? "md:hidden" : "block",
                     )}
                   >
                     {item.label}
                   </span>
 
                   {/* Tooltip for collapsed state */}
-                  {isCollapsed && (
+                  {sidebarCollapsed && (
                     <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999]">
                       {item.label}
                     </div>
@@ -255,7 +242,7 @@ export default function Sidebar({
               <button
                 className={cn(
                   "flex items-center w-full rounded-xl text-sm font-medium transition-all duration-200 group border border-transparent relative",
-                  isCollapsed
+                  sidebarCollapsed
                     ? "md:justify-center md:px-2 md:py-3"
                     : "gap-4 px-4 py-3",
                   "gap-4 px-4 py-3", // Mobile always shows full
@@ -263,7 +250,7 @@ export default function Sidebar({
                     ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border-indigo-200/60 shadow-sm"
                     : "text-gray-600 hover:bg-gray-50/80 hover:text-gray-900 hover:border-gray-200/40",
                 )}
-                title={isCollapsed ? "Settings" : undefined}
+                title={sidebarCollapsed ? "Settings" : undefined}
               >
                 <FaCog
                   className={cn(
@@ -276,14 +263,14 @@ export default function Sidebar({
                 <span
                   className={cn(
                     "font-medium tracking-wide transition-all duration-300",
-                    isCollapsed ? "md:hidden" : "block",
+                    sidebarCollapsed ? "md:hidden" : "block",
                   )}
                 >
                   Settings
                 </span>
 
                 {/* Tooltip for collapsed state */}
-                {isCollapsed && (
+                {sidebarCollapsed && (
                   <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999]">
                     Settings
                   </div>
@@ -293,46 +280,42 @@ export default function Sidebar({
           </div>
 
           {/* Sign Out */}
-            <div className="min-h-[44px] flex items-center">
-            <Link
-              href="/faqs"
-              onClick={onClose}
-              className="w-full"
-            >
+          <div className="min-h-[44px] flex items-center">
+            <Link href="/faqs" onClick={onClose} className="w-full">
               <button
-              className={cn(
-                "flex items-center w-full rounded-xl text-sm font-medium transition-all duration-200 group border border-transparent relative",
-                isCollapsed
-                ? "md:justify-center md:px-2 md:py-3"
-                : "gap-4 px-4 py-3",
-                "gap-4 px-4 py-3", // Mobile always shows full
-              )}
-              title={isCollapsed ? "FAQs" : undefined}
-              >
-              <FaRegQuestionCircle className="w-5 h-5 transition-colors text-gray-400 hover:text-black duration-200 flex-shrink-0" />
-              <span
                 className={cn(
-                "font-medium tracking-wide transition-all duration-300",
-                isCollapsed ? "md:hidden" : "block",
+                  "flex items-center w-full rounded-xl text-sm font-medium transition-all duration-200 group border border-transparent relative",
+                  sidebarCollapsed
+                    ? "md:justify-center md:px-2 md:py-3"
+                    : "gap-4 px-4 py-3",
+                  "gap-4 px-4 py-3", // Mobile always shows full
                 )}
+                title={sidebarCollapsed ? "FAQs" : undefined}
               >
-                FAQs
-              </span>
+                <FaRegQuestionCircle className="w-5 h-5 transition-colors text-gray-400 hover:text-black duration-200 flex-shrink-0" />
+                <span
+                  className={cn(
+                    "font-medium tracking-wide transition-all duration-300",
+                    sidebarCollapsed ? "md:hidden" : "block",
+                  )}
+                >
+                  FAQs
+                </span>
 
-              {/* Tooltip for collapsed state */}
-              {isCollapsed && (
-                <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999]">
-                FAQs
-                </div>
-              )}
+                {/* Tooltip for collapsed state */}
+                {sidebarCollapsed && (
+                  <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999]">
+                    FAQs
+                  </div>
+                )}
               </button>
             </Link>
-            </div>
+          </div>
 
           {/* Footer */}
           <div className="hidden min-h-[56px] md:flex items-center justify-center">
             <div className="text-center text-gray-400 text-xs pt-4 border-t border-gray-100/60 transition-all duration-300 w-full">
-              {isCollapsed ? (
+              {sidebarCollapsed ? (
                 <div className="min-h-[32px] flex items-center justify-center">
                   <p className="font-medium text-gray-500">v1.0</p>
                 </div>

@@ -26,14 +26,37 @@ import AddClassModal from "./add-class-modal";
 
 interface TeacherClass {
   id: string;
-  timetable_entry_id?: string;
-  subject_name: string;
-  subject_code: string;
-  branch: string;
-  section: string;
-  room_number: string;
+  allocation_type: string;
+  assigned_at: string;
+  is_active: boolean;
   notes?: string;
-  timings?: { day: string; time_slot: string }[];
+  entry_details: {
+    subject_name: string;
+    subject_code: string;
+    subject_short_name?: string;
+    branch: string;
+    section: string;
+    room_number: string;
+    academic_year: string;
+    semester_type: string;
+    semester?: number;
+    room_type?: string;
+    // For regular classes
+    entry_id?: string;
+    allocation_id?: string;
+    day_half?: string;
+    entry_notes?: string;
+    entry_color?: string;
+    // For lab entries
+    lab_id?: string;
+    day?: string;
+    start_time?: string;
+    end_time?: string;
+    duration_hours?: number;
+    lab_notes?: string;
+    lab_color?: string;
+  };
+  timings: { id?: string; day: string; time_slot: string }[];
   student_count?: number;
   session_count?: number;
 }
@@ -44,6 +67,11 @@ interface ProcessedClass {
   class_location: string;
   class_group: string | null;
   class_type_label?: string;
+  allocation_type: string;
+  semester?: number;
+  branch: string;
+  section: string;
+  lab_notes?: string;
   student_count?: number;
   session_count?: number;
   timing_day: string;
@@ -108,8 +136,27 @@ export default function ClassesList() {
         // For each class, create a ProcessedClass for each timing
         const processedClasses: ProcessedClass[] = [];
         for (const classItem of result.data) {
-          if (Array.isArray(classItem.timings)) {
-            for (const timing of classItem.timings) {
+          const entryDetails = classItem.entry_details;
+
+          // For labs, create timing from embedded day/time info if not already in timings
+          let timings = classItem.timings;
+          if (
+            classItem.allocation_type === "lab" &&
+            entryDetails.day &&
+            entryDetails.start_time &&
+            entryDetails.end_time &&
+            (!timings || timings.length === 0)
+          ) {
+            timings = [
+              {
+                day: entryDetails.day,
+                time_slot: `${entryDetails.start_time}-${entryDetails.end_time}`,
+              },
+            ];
+          }
+
+          if (Array.isArray(timings)) {
+            for (const timing of timings) {
               const [startTime] = timing.time_slot.split("-");
               const [hour, minute] = startTime.split(":").map(Number);
               const period = hour >= 12 ? "PM" : "AM";
@@ -141,13 +188,22 @@ export default function ClassesList() {
               }
               processedClasses.push({
                 id: classItem.id,
-                subject_display: classItem.subject_name,
-                class_location: classItem.room_number,
+                subject_display: entryDetails.subject_name,
+                class_location: entryDetails.room_number,
                 class_group:
-                  classItem.branch && classItem.section
-                    ? `${classItem.branch} - ${classItem.section}`
+                  entryDetails.branch && entryDetails.section
+                    ? `${entryDetails.branch} - ${entryDetails.section}`
                     : null,
-                class_type_label: classItem.notes || "",
+                class_type_label:
+                  entryDetails.entry_notes ||
+                  entryDetails.lab_notes ||
+                  classItem.notes ||
+                  "",
+                allocation_type: classItem.allocation_type,
+                semester: entryDetails.semester,
+                branch: entryDetails.branch,
+                section: entryDetails.section,
+                lab_notes: entryDetails.lab_notes,
                 student_count: studentCount,
                 session_count: sessionCount,
                 timing_day: timing.day,
@@ -366,16 +422,34 @@ export default function ClassesList() {
                                   <h4 className="font-semibold text-gray-900 text-base group-hover:text-blue-600 transition-colors">
                                     {classItem.subject_display}
                                   </h4>
-                                  <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
-                                    {classItem.class_type_label}
+                                  <span
+                                    className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                      classItem.allocation_type === "lab"
+                                        ? "bg-purple-100 text-purple-700"
+                                        : "bg-blue-100 text-blue-700"
+                                    }`}
+                                  >
+                                    {classItem.allocation_type.toUpperCase()}
                                   </span>
                                 </div>
 
-                                {classItem.class_group && (
-                                  <p className="text-base text-gray-600 font-medium mb-3">
-                                    {classItem.class_group}
-                                  </p>
-                                )}
+                                <div className="mb-3 space-y-1">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="font-medium text-gray-700">
+                                      Semester:
+                                    </span>
+                                    <span className="text-gray-600">
+                                      {classItem.semester || "N/A"}
+                                    </span>
+                                    |
+                                    <span className="font-medium text-gray-700">
+                                      Class:
+                                    </span>
+                                    <span className="text-gray-600">
+                                      {classItem.branch}-{classItem.section}
+                                    </span>
+                                  </div>
+                                </div>
 
                                 <div className="space-y-2 grid-flow-col columns-2 text-base text-gray-600">
                                   <div className="flex items-center gap-2">

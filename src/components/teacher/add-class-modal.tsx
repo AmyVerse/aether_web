@@ -26,6 +26,14 @@ interface TimetableEntry {
   notes?: string;
   color_code?: string;
   timings?: { day: string; time_slot: string }[];
+  entry_type: "class" | "lab"; // Add entry type
+  allocation_id?: string | null; // Add allocation ID (null for labs)
+  day_half?: string | null; // Add day half (null for labs)
+  // Lab-specific fields (optional for regular entries)
+  day?: string;
+  start_time?: string;
+  end_time?: string;
+  duration_hours?: number;
 }
 
 interface Subject {
@@ -192,22 +200,31 @@ export default function AddClassModal({
 
     setSubmitting(true);
     try {
+      // Find the selected entry to determine its type
+      const entry = filteredEntries.find((e) => e.id === selectedEntry);
+      const isLabEntry = entry?.entry_type === "lab";
+
       const response = await fetch("/api/teacher/classes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          timetable_entry_id: selectedEntry,
+          allocation_type: isLabEntry ? "lab" : "class",
+          timetable_entry_id: isLabEntry ? null : selectedEntry,
+          lab_entry_id: isLabEntry ? selectedEntry : null,
         }),
       });
 
       if (response.ok) {
-        showSuccess("Class added successfully!");
+        const data = await response.json();
+        showSuccess(`${isLabEntry ? "Lab" : "Class"} added successfully!`);
         // Invalidate teacher classes cache to trigger refresh
         invalidateTeacherClasses();
         handleClose();
       } else {
         const error = await response.json();
-        showError(error.error || "Failed to add class");
+        showError(
+          error.error || `Failed to add ${isLabEntry ? "lab" : "class"}`,
+        );
       }
     } catch (error) {
       showError("An error occurred while adding the class");
@@ -376,6 +393,18 @@ export default function AddClassModal({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-gray-900">Type:</span>
+                      <span
+                        className={`px-2 py-1 rounded-md text-xs font-medium ${
+                          entry.entry_type === "lab"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {entry.entry_type === "lab" ? "Lab" : "Class"}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1">
                       <span className="font-medium text-gray-900">Sem:</span>
                       <span className="text-gray-700">

@@ -1,8 +1,10 @@
 import { auth } from "@/auth";
 import { db } from "@/db/index";
 import {
+  classroomAllocations,
   classSessions,
   classTeachers,
+  labTimetableEntries,
   subjects,
   teachers,
   timetableEntries,
@@ -22,10 +24,10 @@ export async function GET(
 
     const resolvedParams = await params;
 
-    // Get session details with class and subject information - teacher already authenticated
-    const sessionDetails = await db
+    // First get the basic session info and teacher class
+    const sessionInfo = await db
       .select({
-        id: classSessions.id,
+        session_id: classSessions.id,
         teacher_class_id: classSessions.teacher_class_id,
         date: classSessions.date,
         start_time: classSessions.start_time,
@@ -33,31 +35,98 @@ export async function GET(
         status: classSessions.status,
         notes: classSessions.notes,
         created_at: classSessions.created_at,
-        subject_name: subjects.course_name,
-        subject_code: subjects.course_code,
-        branch: timetableEntries.branch,
-        section: timetableEntries.section
+        allocation_type: classTeachers.allocation_type,
+        timetable_entry_id: classTeachers.timetable_entry_id,
+        lab_entry_id: classTeachers.lab_entry_id,
       })
       .from(classSessions)
       .innerJoin(
         classTeachers,
         eq(classSessions.teacher_class_id, classTeachers.id),
       )
-      .innerJoin(
-        timetableEntries,
-        eq(classTeachers.timetable_entry_id, timetableEntries.id),
+      .where(
+        and(
+          eq(classSessions.id, resolvedParams.sessionId),
+          eq(classTeachers.teacher_id, teacher.id),
+        ),
       )
-      .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
-      .where(eq(classSessions.id, resolvedParams.sessionId))
       .limit(1);
 
-    if (sessionDetails.length === 0) {
+    if (sessionInfo.length === 0) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    const session = sessionInfo[0];
+
+    // Now get the class/lab specific details based on allocation type
+    let sessionDetails;
+
+    if (session.allocation_type === "class" && session.timetable_entry_id) {
+      // Get regular class details
+      const classDetails = await db
+        .select({
+          subject_name: subjects.course_name,
+          subject_code: subjects.course_code,
+          branch: classroomAllocations.branch,
+          section: classroomAllocations.section,
+          semester: classroomAllocations.semester,
+        })
+        .from(timetableEntries)
+        .innerJoin(
+          classroomAllocations,
+          eq(timetableEntries.allocation_id, classroomAllocations.id),
+        )
+        .leftJoin(subjects, eq(timetableEntries.subject_id, subjects.id))
+        .where(eq(timetableEntries.id, session.timetable_entry_id))
+        .limit(1);
+
+      if (classDetails.length === 0) {
+        return NextResponse.json(
+          { error: "Class details not found" },
+          { status: 404 },
+        );
+      }
+
+      sessionDetails = {
+        ...session,
+        ...classDetails[0],
+      };
+    } else if (session.allocation_type === "lab" && session.lab_entry_id) {
+      // Get lab details
+      const labDetails = await db
+        .select({
+          subject_name: subjects.course_name,
+          subject_code: subjects.course_code,
+          branch: labTimetableEntries.branch,
+          section: labTimetableEntries.section,
+          semester: labTimetableEntries.semester,
+        })
+        .from(labTimetableEntries)
+        .leftJoin(subjects, eq(labTimetableEntries.subject_id, subjects.id))
+        .where(eq(labTimetableEntries.id, session.lab_entry_id))
+        .limit(1);
+
+      if (labDetails.length === 0) {
+        return NextResponse.json(
+          { error: "Lab details not found" },
+          { status: 404 },
+        );
+      }
+
+      sessionDetails = {
+        ...session,
+        ...labDetails[0],
+      };
+    } else {
+      return NextResponse.json(
+        { error: "Invalid class configuration" },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({
       success: true,
-      data: sessionDetails[0],
+      data: sessionDetails,
     });
   } catch (error) {
     console.error("Error fetching session details:", error);

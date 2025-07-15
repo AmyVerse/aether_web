@@ -4,7 +4,7 @@ import Combobox from "@/components/ui/combobox";
 import Dialog from "@/components/ui/dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useSessionStore } from "@/store/useSessionStore";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaPlus } from "react-icons/fa";
 
 interface Room {
@@ -94,6 +94,54 @@ export default function TimetableGrid() {
   >([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
 
+  // Memoized calculations for performance
+  const roomAllocations = useMemo(
+    () => allocations.filter((a) => a?.room?.id === selectedRoom),
+    [allocations, selectedRoom],
+  );
+
+  const uniqueRooms = useMemo(
+    () =>
+      Array.from(new Set(allocations.map((a) => a?.room?.id).filter(Boolean)))
+        .map((roomId) => allocations.find((a) => a?.room?.id === roomId)?.room)
+        .filter(Boolean),
+    [allocations],
+  );
+
+  // Unified function to fetch timetable data with timings
+  const fetchTimetableDataForAllocations = useCallback(
+    async (allocationIds: string[]) => {
+      if (allocationIds.length === 0) return [];
+
+      const response = await fetch(
+        `/api/editor/timetable-entries?allocation_ids=${allocationIds.join(",")}`,
+      );
+
+      if (!response.ok) return [];
+
+      const entries = await response.json();
+      if (entries.length === 0) return [];
+
+      // Fetch all timings in bulk
+      const entryIds = entries.map((entry: any) => entry.id);
+      const timingsResponse = await fetch(
+        `/api/editor/timetable-entries/bulk-timings?entry_ids=${entryIds.join(",")}`,
+      );
+
+      let timingsByEntry = {};
+      if (timingsResponse.ok) {
+        timingsByEntry = await timingsResponse.json();
+      }
+
+      // Combine entries with their timings
+      return entries.map((entry: any) => ({
+        ...entry,
+        timings: timingsByEntry[entry.id as keyof typeof timingsByEntry] || [],
+      }));
+    },
+    [],
+  );
+
   // Color coding based on time half only
   const getSubjectColor = (timeSlot: string) => {
     const timeHour = parseInt(timeSlot.split(":")[0]);
@@ -123,13 +171,15 @@ export default function TimetableGrid() {
     fetchAllData();
   }, [academicYear, semesterType]);
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
 
       // Fetch allocations and subjects in parallel
       const [allocationsResponse, subjectsResponse] = await Promise.all([
-        fetch("/api/editor/allocations"),
+        fetch(
+          `/api/editor/allocations?academic_year=${academicYear}&semester_type=${semesterType}`,
+        ),
         fetch("/api/editor/subjects"),
       ]);
 
@@ -139,163 +189,124 @@ export default function TimetableGrid() {
           subjectsResponse.json(),
         ]);
 
-        // Filter allocations
-        const filtered = (allocationsData || []).filter(
-          (allocation: ClassroomAllocation) =>
-            allocation?.academic_year === academicYear &&
-            allocation?.semester_type === semesterType,
-        );
-
-        setAllocations(filtered);
+        setAllocations(allocationsData || []);
         setSubjects(subjectsData?.subjects || subjectsData || []);
 
-        // Auto-select first room and load timetable data together
-        if (filtered.length > 0 && !selectedRoom && filtered[0]?.room?.id) {
-          const firstRoomId = filtered[0].room.id;
+        // Auto-select first room and load timetable data
+        if (
+          allocationsData.length > 0 &&
+          !selectedRoom &&
+          allocationsData[0]?.room?.id
+        ) {
+          const firstRoomId = allocationsData[0].room.id;
           setSelectedRoom(firstRoomId);
 
-          // Load timetable data immediately for the first room
-          const roomAllocations = filtered.filter(
+          // Load timetable data for first room
+          const firstRoomAllocations = allocationsData.filter(
             (a: ClassroomAllocation) => a?.room?.id === firstRoomId,
           );
-          const allocationIds = roomAllocations
-            .map((a: ClassroomAllocation) => a.id)
-            .join(",");
+          const allocationIds = firstRoomAllocations.map(
+            (a: ClassroomAllocation) => a.id,
+          );
 
-          if (allocationIds) {
-            const entriesResponse = await fetch(
-              `/api/editor/timetable-entries?allocation_ids=${allocationIds}`,
-            );
-
-            if (entriesResponse.ok) {
-              const entries = await entriesResponse.json();
-
-              // Fetch all timings in parallel
-              const entriesWithTimings = await Promise.all(
-                entries.map(async (entry: any) => {
-                  try {
-                    const timingsResponse = await fetch(
-                      `/api/editor/timetable-entries/${entry.id}/timings`,
-                    );
-                    if (timingsResponse.ok) {
-                      const timings = await timingsResponse.json();
-                      return { ...entry, timings };
-                    }
-                    return { ...entry, timings: [] };
-                  } catch (error) {
-                    console.error(
-                      `Error fetching timings for entry ${entry.id}:`,
-                      error,
-                    );
-                    return { ...entry, timings: [] };
-                  }
-                }),
-              );
-
-              setTimetableEntries(entriesWithTimings);
-            }
+          if (allocationIds.length > 0) {
+            const entriesWithTimings =
+              await fetchTimetableDataForAllocations(allocationIds);
+            setTimetableEntries(entriesWithTimings);
           }
         }
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
       setAllocations([]);
       setSubjects([]);
       setTimetableEntries([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    academicYear,
+    semesterType,
+    selectedRoom,
+    fetchTimetableDataForAllocations,
+  ]);
 
-  const fetchTimetableData = async () => {
+  const fetchTimetableData = useCallback(async () => {
     try {
       setTimetableLoading(true);
-      const roomAllocations = allocations.filter(
-        (a) => a?.room?.id === selectedRoom,
-      );
-      const allocationIds = roomAllocations.map((a) => a.id).join(",");
+      const allocationIds = roomAllocations.map((a) => a.id);
 
-      if (allocationIds) {
-        const response = await fetch(
-          `/api/editor/timetable-entries?allocation_ids=${allocationIds}`,
-        );
-
-        if (response.ok) {
-          const entries = await response.json();
-
-          // Fetch all timings in parallel
-          const entriesWithTimings = await Promise.all(
-            entries.map(async (entry: any) => {
-              try {
-                const timingsResponse = await fetch(
-                  `/api/editor/timetable-entries/${entry.id}/timings`,
-                );
-                if (timingsResponse.ok) {
-                  const timings = await timingsResponse.json();
-                  return { ...entry, timings };
-                }
-                return { ...entry, timings: [] };
-              } catch (error) {
-                console.error(
-                  `Error fetching timings for entry ${entry.id}:`,
-                  error,
-                );
-                return { ...entry, timings: [] };
-              }
-            }),
-          );
-
-          setTimetableEntries(entriesWithTimings);
-        }
+      if (allocationIds.length > 0) {
+        const entriesWithTimings =
+          await fetchTimetableDataForAllocations(allocationIds);
+        setTimetableEntries(entriesWithTimings);
       } else {
         setTimetableEntries([]);
       }
-    } catch (error) {
-      console.error("Error fetching timetable entries:", error);
+    } catch {
       setTimetableEntries([]);
     } finally {
       setTimetableLoading(false);
     }
-  };
+  }, [roomAllocations, fetchTimetableDataForAllocations]);
 
-  const handleCellClick = (day: string, timeSlot: string) => {
-    // Determine which half of the day this time slot belongs to
-    const timeHour = parseInt(timeSlot.split(":")[0]);
-    const dayHalf = timeHour < 13 ? "first_half" : "second_half";
+  const getSubjectForCell = useCallback(
+    (day: string, timeSlot: string, allocation: ClassroomAllocation) => {
+      const entry = timetableEntries.find(
+        (entry) =>
+          entry.allocation_id === allocation.id &&
+          entry.timings?.some(
+            (timing) => timing.day === day && timing.time_slot === timeSlot,
+          ),
+      );
+      return entry?.subject;
+    },
+    [timetableEntries],
+  );
 
-    // Get allocations for the specific half that don't have a subject in this slot
-    const availableAllocs = roomAllocations.filter(
-      (allocation) =>
-        (allocation.day_half === dayHalf || allocation.day_half === null) &&
-        !getSubjectForCell(day, timeSlot, allocation),
-    );
+  const handleCellClick = useCallback(
+    (day: string, timeSlot: string) => {
+      // Determine which half of the day this time slot belongs to
+      const timeHour = parseInt(timeSlot.split(":")[0]);
+      const dayHalf = timeHour < 13 ? "first_half" : "second_half";
 
-    if (availableAllocs.length === 0) {
-      return;
-    } else if (availableAllocs.length === 1) {
-      // Single allocation for this half, go directly to subject selection
-      setSelectedCell({ day, timeSlot, allocation: availableAllocs[0] });
-      setSelectedSubjectId("");
-      setShowSubjectModal(true);
-    } else {
-      // Multiple allocations in the same half, show allocation selection first
-      setAvailableAllocations(availableAllocs);
-      setSelectedCell({ day, timeSlot, allocation: availableAllocs[0] }); // temporary
-      setSelectedSubjectId("");
-      setShowAllocationModal(true);
-    }
-  };
+      // Get allocations for the specific half that don't have a subject in this slot
+      const availableAllocs = roomAllocations.filter(
+        (allocation) =>
+          (allocation.day_half === dayHalf || allocation.day_half === null) &&
+          !getSubjectForCell(day, timeSlot, allocation),
+      );
 
-  const handleAllocationSelect = (allocation: ClassroomAllocation) => {
-    if (selectedCell) {
-      setSelectedCell({ ...selectedCell, allocation });
-      setShowAllocationModal(false);
-      setSelectedSubjectId("");
-      setShowSubjectModal(true);
-    }
-  };
+      if (availableAllocs.length === 0) {
+        return;
+      } else if (availableAllocs.length === 1) {
+        // Single allocation for this half, go directly to subject selection
+        setSelectedCell({ day, timeSlot, allocation: availableAllocs[0] });
+        setSelectedSubjectId("");
+        setShowSubjectModal(true);
+      } else {
+        // Multiple allocations in the same half, show allocation selection first
+        setAvailableAllocations(availableAllocs);
+        setSelectedCell({ day, timeSlot, allocation: availableAllocs[0] }); // temporary
+        setSelectedSubjectId("");
+        setShowAllocationModal(true);
+      }
+    },
+    [roomAllocations, getSubjectForCell],
+  );
 
-  const handleSubjectSelect = async () => {
+  const handleAllocationSelect = useCallback(
+    (allocation: ClassroomAllocation) => {
+      if (selectedCell) {
+        setSelectedCell({ ...selectedCell, allocation });
+        setShowAllocationModal(false);
+        setSelectedSubjectId("");
+        setShowSubjectModal(true);
+      }
+    },
+    [selectedCell],
+  );
+
+  const handleSubjectSelect = useCallback(async () => {
     if (!selectedCell || !selectedSubjectId) return;
 
     try {
@@ -315,7 +326,6 @@ export default function TimetableGrid() {
         );
 
         if (timingExists) {
-          console.log("Timing already exists for this entry");
           setShowSubjectModal(false);
           setSelectedCell(null);
           setAvailableAllocations([]);
@@ -337,10 +347,7 @@ export default function TimetableGrid() {
         );
 
         if (response.ok) {
-          // Refresh timetable entries
           fetchTimetableData();
-        } else {
-          console.error("Failed to add timing to existing entry");
         }
       } else {
         // Create new timetable entry with timings
@@ -360,43 +367,71 @@ export default function TimetableGrid() {
         });
 
         if (response.ok) {
-          // Refresh timetable entries
           fetchTimetableData();
         }
       }
-    } catch (error) {
-      console.error("Error creating/updating timetable entry:", error);
+    } catch {
+      // Silently handle errors
     }
 
     setShowSubjectModal(false);
     setSelectedCell(null);
     setAvailableAllocations([]);
     setSelectedSubjectId("");
-  };
+  }, [selectedCell, selectedSubjectId, timetableEntries, fetchTimetableData]);
 
-  const getSubjectForCell = (
-    day: string,
-    timeSlot: string,
-    allocation: ClassroomAllocation,
-  ) => {
-    const entry = timetableEntries.find(
-      (entry) =>
-        entry.allocation_id === allocation.id &&
-        entry.timings?.some(
-          (timing) => timing.day === day && timing.time_slot === timeSlot,
-        ),
-    );
-    return entry?.subject;
-  };
+  // Optimized room selection handler
+  const handleRoomSelect = useCallback(
+    async (roomId: string) => {
+      setSelectedRoom(roomId);
 
-  const roomAllocations = allocations.filter(
-    (a) => a?.room?.id === selectedRoom,
+      try {
+        setTimetableLoading(true);
+        const roomAllocations = allocations.filter(
+          (a) => a?.room?.id === roomId,
+        );
+        const allocationIds = roomAllocations.map((a) => a.id);
+
+        if (allocationIds.length > 0) {
+          const entriesWithTimings =
+            await fetchTimetableDataForAllocations(allocationIds);
+          setTimetableEntries(entriesWithTimings);
+        } else {
+          setTimetableEntries([]);
+        }
+      } catch {
+        setTimetableEntries([]);
+      } finally {
+        setTimetableLoading(false);
+      }
+    },
+    [allocations, fetchTimetableDataForAllocations],
   );
-  const uniqueRooms = Array.from(
-    new Set(allocations.map((a) => a?.room?.id).filter(Boolean)),
-  )
-    .map((roomId) => allocations.find((a) => a?.room?.id === roomId)?.room)
-    .filter(Boolean);
+
+  // Memoized modal handlers
+  const handleCloseAllocationModal = useCallback(() => {
+    setShowAllocationModal(false);
+    setSelectedCell(null);
+    setAvailableAllocations([]);
+    setSelectedSubjectId("");
+  }, []);
+
+  const handleCloseSubjectModal = useCallback(() => {
+    setShowSubjectModal(false);
+    setSelectedCell(null);
+    setAvailableAllocations([]);
+    setSelectedSubjectId("");
+  }, []);
+
+  // Memoized subject options for Combobox
+  const subjectOptions = useMemo(
+    () =>
+      subjects.map((subject) => ({
+        value: subject.id,
+        label: `${subject.course_code} - ${subject.course_name}`,
+      })),
+    [subjects],
+  );
 
   if (loading) {
     return (
@@ -421,61 +456,7 @@ export default function TimetableGrid() {
             {uniqueRooms.map((room) => (
               <button
                 key={room!.id}
-                onClick={async () => {
-                  setSelectedRoom(room!.id);
-
-                  // Load timetable data for the selected room
-                  try {
-                    setTimetableLoading(true);
-                    const roomAllocations = allocations.filter(
-                      (a) => a?.room?.id === room!.id,
-                    );
-                    const allocationIds = roomAllocations
-                      .map((a) => a.id)
-                      .join(",");
-
-                    if (allocationIds) {
-                      const response = await fetch(
-                        `/api/editor/timetable-entries?allocation_ids=${allocationIds}`,
-                      );
-
-                      if (response.ok) {
-                        const entries = await response.json();
-
-                        // Fetch all timings in parallel
-                        const entriesWithTimings = await Promise.all(
-                          entries.map(async (entry: any) => {
-                            try {
-                              const timingsResponse = await fetch(
-                                `/api/editor/timetable-entries/${entry.id}/timings`,
-                              );
-                              if (timingsResponse.ok) {
-                                const timings = await timingsResponse.json();
-                                return { ...entry, timings };
-                              }
-                              return { ...entry, timings: [] };
-                            } catch (error) {
-                              console.error(
-                                `Error fetching timings for entry ${entry.id}:`,
-                                error,
-                              );
-                              return { ...entry, timings: [] };
-                            }
-                          }),
-                        );
-
-                        setTimetableEntries(entriesWithTimings);
-                      }
-                    } else {
-                      setTimetableEntries([]);
-                    }
-                  } catch (error) {
-                    console.error("Error fetching timetable entries:", error);
-                    setTimetableEntries([]);
-                  } finally {
-                    setTimetableLoading(false);
-                  }
-                }}
+                onClick={() => handleRoomSelect(room!.id)}
                 className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                   selectedRoom === room!.id
                     ? "bg-blue-100 text-blue-700 border-b-2 border-blue-500"
@@ -660,12 +641,7 @@ export default function TimetableGrid() {
 
             <div className="flex justify-end gap-2 mt-4">
               <button
-                onClick={() => {
-                  setShowAllocationModal(false);
-                  setSelectedCell(null);
-                  setAvailableAllocations([]);
-                  setSelectedSubjectId("");
-                }}
+                onClick={handleCloseAllocationModal}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
               >
                 Cancel
@@ -678,12 +654,7 @@ export default function TimetableGrid() {
       {/* Subject Selection Dialog */}
       <Dialog
         isOpen={showSubjectModal}
-        onClose={() => {
-          setShowSubjectModal(false);
-          setSelectedCell(null);
-          setAvailableAllocations([]);
-          setSelectedSubjectId("");
-        }}
+        onClose={handleCloseSubjectModal}
         title="Select Subject"
         description={
           selectedCell
@@ -698,10 +669,7 @@ export default function TimetableGrid() {
       >
         <div className="space-y-4 mb-40">
           <Combobox
-            options={subjects.map((subject) => ({
-              value: subject.id,
-              label: `${subject.course_code} - ${subject.course_name}`,
-            }))}
+            options={subjectOptions}
             value={selectedSubjectId}
             onChange={setSelectedSubjectId}
             placeholder="Search for a subject..."
